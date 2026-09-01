@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables — NEVER commit this
+.env
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Project-specific
+data/documents/        # PDF corpus — large files, do not commit
+chroma_db/             # ChromaDB storage — regenerated from documents
+*.pdf                  # No PDFs in the repo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
