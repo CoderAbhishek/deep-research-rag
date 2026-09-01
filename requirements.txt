@@ -1,0 +1,33 @@
+# PDF extraction
+pymupdf==1.25.5
+
+# Embeddings (local, no API key)
+sentence-transformers==3.4.1
+
+# Vector store
+chromadb==0.6.3
+
+# LLM orchestration (used from Session 9 onward; installed now)
+langchain==0.3.25
+langchain-community==0.3.24
+langchain-groq==0.3.2
+
+# Groq API client
+groq==0.13.0
+
+# Environment variable loading
+python-dotenv==1.0.1
+
+# UI (baseline and final)
+streamlit==1.43.2
+
+# Sparse retrieval (Session 5)
+rank-bm25==0.2.2
+
+# Evaluation (Session 10)
+ragas==0.2.14
+
+# API layer (Session 11)
+fastapi==0.115.11
+uvicorn==0.34.0
+pydantic==2.10.6

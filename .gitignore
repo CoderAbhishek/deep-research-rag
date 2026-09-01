@@ -19,10 +19,15 @@ env/
 # macOS
 .DS_Store
 
-# Project-specific
-data/documents/        # PDF corpus — large files, do not commit
-chroma_db/             # ChromaDB storage — regenerated from documents
-*.pdf                  # No PDFs in the repo
+# PDF corpus — large files, personal documents, do not commit
+data/documents/
+data/documents/*
+
+# No PDFs anywhere in the repo
+*.pdf
+
+# ChromaDB storage — regenerated from documents, do not commit
+chroma_db/
 
 # Jupyter
 .ipynb_checkpoints/
