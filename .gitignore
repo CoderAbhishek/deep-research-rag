@@ -36,3 +36,7 @@ chroma_db/
 dist/
 build/
 *.egg-info/
+
+# Internal session tracking — not for public repo
+PROJECT_STATE.md
+INTERVIEW_PREP.md
