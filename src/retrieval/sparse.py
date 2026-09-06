@@ -27,26 +27,32 @@ def tokenize(text: str) -> List[str]:
 
 
 def build_bm25_index(
-    chunks: List[Dict[str, Any]],
+    collection,
 ) -> Tuple[BM25Okapi, List[Dict[str, Any]]]:
     """
-    Build a BM25 index over a list of chunk dictionaries.
+    Build a BM25 index from all chunks stored in a ChromaDB collection.
 
     BM25 needs the corpus to be tokenised upfront — it computes IDF
     (inverse document frequency) at index-build time, not at query time.
     That's why building the index is a separate step from querying.
 
     Args:
-        chunks: List of dicts, each with at least a 'text' key.
-                These should be in the same order as the documents
-                you want to retrieve.
+        collection: A ChromaDB Collection object. All documents and
+                    metadata are fetched from it internally.
 
     Returns:
-        (bm25, chunks): The BM25Okapi index and the original chunks list.
+        (bm25, chunks): The BM25Okapi index and the list of chunk dicts.
         We return both together so the caller can map result indices back
         to the original chunk metadata. The index alone knows only positions
         (0, 1, 2, ...) — not document content or metadata.
     """
+    # Fetch all documents and metadata from ChromaDB
+    result = collection.get(include=["documents", "metadatas"])
+    chunks = [
+        {"text": doc, "metadata": meta}
+        for doc, meta in zip(result["documents"], result["metadatas"])
+    ]
+
     print(f"Tokenising {len(chunks)} chunks...")
     tokenized_corpus = [tokenize(chunk["text"]) for chunk in chunks]
 
