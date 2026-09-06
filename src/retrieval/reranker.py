@@ -81,3 +81,58 @@ def rerank(
         results.append(entry)
 
     return results
+
+def deduplicate_by_page(
+    results: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    After reranking, keep only the highest-scoring chunk per unique page.
+
+    Why this is needed:
+    The chunking pipeline can produce multiple overlapping chunks from the
+    same PDF page. When both enter the candidate pool and get reranked,
+    they receive different cross-encoder scores — because they contain
+    different text. Without deduplication, two chunks from the same page
+    can occupy two separate result slots, wasting capacity and confusing
+    downstream generation (the LLM receives redundant, partially-overlapping
+    text from the same source).
+
+    Deduplication key: (file_name, page_number)
+    — two chunks from the same file AND same page are considered duplicates.
+    — chunks from different files with the same page number are not duplicates.
+
+    The winner: the chunk with the lowest rank (= highest rerank_score),
+    which is whichever chunk the cross-encoder found more relevant.
+
+    Args:
+        results: A list of chunk dicts sorted by rerank_score descending
+                 (i.e. already the output of rerank()). Each dict must have
+                 a 'metadata' key with 'file_name' and 'page_number'.
+
+    Returns:
+        A list of chunks, one per unique (file_name, page_number) pair,
+        in the same relative order (lowest original rank wins).
+        Ranks are reassigned 1..N after deduplication.
+    """
+    seen = set()
+    deduplicated = []
+
+    for chunk in results:
+        # Build the deduplication key from file name + page number.
+        # We use .get() with defaults so the function does not crash if
+        # metadata is incomplete — a defensive pattern for production code.
+        file_name  = chunk["metadata"].get("file_name",  "unknown")
+        page_number = chunk["metadata"].get("page_number", -1)
+        key = (file_name, page_number)
+
+        if key not in seen:
+            seen.add(key)
+            deduplicated.append(chunk)
+
+    # Reassign ranks 1..N after deduplication.
+    # The original rank values from rerank() are now stale — rank 4 might
+    # have become rank 2 if the intervening chunks were duplicates.
+    for new_rank, chunk in enumerate(deduplicated, start=1):
+        chunk["rank"] = new_rank
+
+    return deduplicated
