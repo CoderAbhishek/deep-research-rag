@@ -1,0 +1,14 @@
+question,answer,faithfulness,answer_relevancy,context_precision,context_recall
+What was Infosys's total revenue for FY2023?,"Infosys’s total revenue for FY 2023 was **₹ 1,46,767 crore**【SOURCE 5】.",1.0,0.8074350953102112,1.0,1.0
+How many employees did Infosys have at the end of FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.19671356678009033,1.0,1.0
+What percentage of Infosys revenue came from North America in FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.2901545763015747,1.0,1.0
+Who is the CEO of Infosys?,Salil Parekh is the Chief Executive Officer (and Managing Director) of Infosys Limited【SOURCE 1】.,1.0,0.6776245832443237,1.0,1.0
+What was Infosys's operating profit margin for FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.20867618918418884,1.0,1.0
+What is Infosys's largest business segment by revenue?,"Infosys’s largest business segment by revenue is **Financial Services**, which generated **₹ 49,908 crore** in revenue for the year ended March 31 2026【SOURCE 1】.",1.0,0.8579552173614502,1.0,1.0
+"What was the revenue from Infosys's Energy, Utilities, Resources and Services segment in FY2023?",The provided documents do not contain sufficient information to answer this question.,0.0,0.23520435392856598,1.0,1.0
+How many clients did Infosys have with over $100 million in annual revenue in FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.24487081170082092,1.0,1.0
+What was the revenue from Europe for Infosys in FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.2948305010795593,1.0,1.0
+What is Infosys Cobalt?,"Infosys Cobalt is a set of services, solutions, and platforms for enterprises to accelerate their cloud journey【SOURCE 1】.",1.0,0.8481974005699158,1.0,1.0
+What was Infosys's attrition rate in FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.26021790504455566,0.8875,1.0
+What was Infosys's total revenue in FY2022?,"Infosys’s total revenue in FY 2022 was **₹ 1,21,641 crore**【SOURCE 5】.",1.0,0.812412440776825,1.0,1.0
+What percentage of Infosys revenue came from the Rest of the World geography in FY2023?,The provided documents do not contain sufficient information to answer this question.,0.0,0.27686262130737305,1.0,1.0

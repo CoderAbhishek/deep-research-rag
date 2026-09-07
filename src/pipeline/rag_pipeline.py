@@ -306,6 +306,7 @@ def run_pipeline(
     result = stage_generate(query, generation_chunks)
 
     # Add pipeline metadata to the result dict
+    result["contexts"]          = [c["text"] for c in generation_chunks]   # Session 10
     result["hyde_passage"]      = hyde_passage
     result["rrf_pool_size"]     = len(rrf_pool)
     result["reranked_count"]    = len(reranked)
