@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  rag-api:
+    # Build the image from the Dockerfile in the current directory.
+    build: .
+
+    # Publish container port 8000 to host port 8000.
+    # Format: "host_port:container_port"
+    ports:
+      - "8000:8000"
+
+    # Load environment variables from .env on the host.
+    # GROQ_API_KEY is read here and injected into the container.
+    # The .env file is never copied into the image.
+    env_file:
+      - .env
+
+    # Volume mounts — these directories live on the host and are mounted
+    # into the container at runtime. Nothing in them is baked into the image.
+    volumes:
+      # ChromaDB vector store — populated by ingest.py on the host.
+      # The container reads from (and can write to) the same on-disk database.
+      - ./data:/app/data
+
+      # HuggingFace model cache — sentence-transformers and cross-encoder weights.
+      # First run downloads ~500 MB; subsequent runs reuse the cached weights.
+      # Without this mount, every container restart re-downloads the models.
+      - huggingface_cache:/root/.cache/huggingface
+
+    # Restart policy for production deployments.
+    # "unless-stopped" means: restart on failure or after host reboot,
+    # but not if you explicitly docker compose stop.
+    restart: unless-stopped
+
+    # Healthcheck — Docker polls this every 30 s.
+    # If /health returns non-200 three times in a row, the container is
+    # marked unhealthy (useful for orchestrators like Kubernetes or ECS).
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s   # give the pipeline time to load models on first start
+
+# Named volume for the HuggingFace cache.
+# Docker manages this volume; it persists across container restarts and rebuilds.
+volumes:
+  huggingface_cache:

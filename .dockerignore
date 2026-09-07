@@ -1,0 +1,41 @@
+# Environment files — never bake secrets into the image
+.env
+.env.*
+
+# Data directories — mounted as volumes at runtime, not in the image
+data/
+documents/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# Test files and output
+test_*.py
+*.csv
+*.jsonl
+
+# PDF outputs
+*.pdf
+
+# IDE and OS
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Claude project files — not needed in image
+PROJECT_STATE.md
+INTERVIEW_PREP.md
