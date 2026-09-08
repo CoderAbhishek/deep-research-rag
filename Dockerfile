@@ -29,16 +29,26 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copied after deps so code changes don't invalidate the pip cache layer.
 COPY src/ ./src/
 
+# ── Portfolio demo UI ─────────────────────────────────────────────────────────
+# app.py is the browser-accessible demo that Hugging Face Spaces serves.
+# It is separate from the production API in src/api/main.py.
+COPY app.py .
+
+# ── ChromaDB vector store ─────────────────────────────────────────────────────
+# Bake the pre-populated ChromaDB into the image so HF Spaces has it at runtime.
+# rag_pipeline.py reads from ./chroma_db (CHROMA_PATH constant).
+# For local Docker use, docker-compose.yml mounts ./chroma_db:/app/chroma_db
+# over this, so re-ingestion on the host is picked up without rebuilding.
+COPY chroma_db/ ./chroma_db/
+
 # ── Runtime port ──────────────────────────────────────────────────────────────
 # EXPOSE is documentation — it tells Docker which port the process listens on.
-# It does NOT publish the port to the host; that happens via -p or compose ports:.
-EXPOSE 8000
+# Hugging Face Spaces expects port 7860; app.py binds there.
+# docker-compose.yml overrides CMD to run the production API on port 8000.
+EXPOSE 7860
 
 # ── Default command ───────────────────────────────────────────────────────────
-# Runs the FastAPI app with Uvicorn.
-# --host 0.0.0.0    bind to all interfaces (not just localhost) so requests
-#                   from outside the container can reach the server
-# --port 8000       match EXPOSE above
-# --workers 1       single worker; the pipeline holds large models in memory —
-#                   multiple workers would each load their own copy (several GB)
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Default: runs the portfolio demo UI on port 7860 (used by Hugging Face Spaces).
+# For local production API use, docker-compose.yml overrides this with uvicorn
+# on src.api.main:app at port 8000.
+CMD ["python", "app.py"]

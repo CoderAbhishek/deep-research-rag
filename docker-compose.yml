@@ -5,6 +5,10 @@ services:
     # Build the image from the Dockerfile in the current directory.
     build: .
 
+    # Override the Dockerfile default CMD (which runs app.py on 7860 for HF Spaces).
+    # docker-compose runs the production JSON API instead.
+    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+
     # Publish container port 8000 to host port 8000.
     # Format: "host_port:container_port"
     ports:
@@ -19,8 +23,13 @@ services:
     # Volume mounts — these directories live on the host and are mounted
     # into the container at runtime. Nothing in them is baked into the image.
     volumes:
-      # ChromaDB vector store — populated by ingest.py on the host.
-      # The container reads from (and can write to) the same on-disk database.
+      # ChromaDB vector store — overrides the baked-in copy for local dev.
+      # Re-ingest on the host and the container picks it up without a rebuild.
+      # On HF Spaces there is no volume mount; the baked-in copy (from COPY in
+      # Dockerfile) is used instead.
+      - ./chroma_db:/app/chroma_db
+
+      # Evaluation outputs and ground truth.
       - ./data:/app/data
 
       # HuggingFace model cache — sentence-transformers and cross-encoder weights.

@@ -26,9 +26,6 @@ data/documents/*
 # No PDFs anywhere in the repo
 *.pdf
 
-# ChromaDB storage — regenerated from documents, do not commit
-chroma_db/
-
 # Jupyter
 .ipynb_checkpoints/
 
