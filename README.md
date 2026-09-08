@@ -2,6 +2,8 @@
 
 A production-grade Retrieval-Augmented Generation system for dense business and research document corpora. Designed for research analysts and strategy consultants who need evidence-grounded, cited answers across multi-document collections — annual reports, DRHPs, industry reports, expert transcripts.
 
+**Live demo:** [deep-research-rag-production.up.railway.app](https://deep-research-rag-production.up.railway.app)
+
 ---
 
 ## Problem
@@ -81,6 +83,7 @@ User Query
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
 | LLM generation | Groq API (compound-beta-mini) |
 | Containerisation | Docker + Docker Compose |
+| Deployment | Railway (Dockerised, Southeast Asia region) |
 | Evaluation | Local RAGAS-equivalent metrics (no API calls) |
 
 ---
@@ -104,6 +107,7 @@ Evaluated on 13 ground-truth question-answer pairs across the ingested corpus.
 
 ```
 deep-research-rag/
+├── app.py               # Portfolio demo UI (FastAPI + dark-mode HTML, port 7860)
 ├── src/
 │   ├── ingestion/       # PDF parsing, chunking, embedding, ChromaDB ingest
 │   ├── retrieval/       # Dense retriever, BM25 retriever, RRF fusion
@@ -112,8 +116,8 @@ deep-research-rag/
 │   ├── pipeline/        # Full 7-stage pipeline orchestration
 │   ├── evaluation/      # Local RAGAS-equivalent metrics
 │   └── api/             # FastAPI application
+├── chroma_db/           # Pre-populated vector store (committed to repo)
 ├── data/
-│   ├── chroma_db/       # Vector store (not in git)
 │   └── ground_truth.json
 ├── Dockerfile
 ├── docker-compose.yml
@@ -122,7 +126,9 @@ deep-research-rag/
 
 ---
 
-## Quickstart — Local
+## Quickstart — Portfolio Demo UI
+
+The fastest way to run the system locally:
 
 ```bash
 # 1. Clone and install
@@ -133,13 +139,21 @@ pip install -r requirements.txt
 # 2. Set your Groq API key
 echo "GROQ_API_KEY=your_key_here" > .env
 
-# 3. Ingest documents (place PDFs in documents/)
-python -m src.ingestion.ingest
+# 3. Run the demo UI (ChromaDB is pre-populated in the repo)
+python app.py
+```
 
-# 4. Run the API
+Then open [http://localhost:7860](http://localhost:7860) for the dark-mode browser interface with example questions, inline answers, and page-level source citations.
+
+---
+
+## Quickstart — Production API
+
+```bash
+# After steps 1–2 above
 uvicorn src.api.main:app --reload --port 8000
 
-# 5. Query
+# Query
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What is Infosys Cobalt?"}'
@@ -155,7 +169,7 @@ Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 # 1. Build the image
 docker compose build
 
-# 2. Start (ChromaDB must already be populated on the host)
+# 2. Start
 docker compose up
 
 # 3. Query
@@ -167,7 +181,7 @@ curl -X POST http://localhost:8000/query \
 docker compose down
 ```
 
-The `data/` directory is volume-mounted — the container reads the ChromaDB database that your local ingest script populated. HuggingFace model weights are cached in a named Docker volume (`huggingface_cache`) so they download once and persist across container restarts.
+The ChromaDB vector store is baked into the Docker image. HuggingFace model weights are cached in a named Docker volume (`huggingface_cache`) so they download once and persist across container restarts.
 
 ---
 
