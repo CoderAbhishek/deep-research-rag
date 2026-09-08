@@ -93,15 +93,12 @@ def generate_multi_query(query: str, n: int = 3, model: str = DEFAULT_MODEL) -> 
     user_prompt = f"Original question: {query}\n\n{n} alternative phrasings:"
     raw = _call_llm(client, system_prompt, user_prompt, model)
 
-    # Parse the numbered list into a clean Python list
     variants = []
     for line in raw.split("\n"):
         line = line.strip()
         if not line:
             continue
-        # Strip leading numbers and punctuation: "1. Revenue..." → "Revenue..."
         if line[0].isdigit():
-            # Remove "1." or "1:" or "1) " at the start
             line = line.lstrip("0123456789").lstrip(".):- ").strip()
         if line:
             variants.append(line)

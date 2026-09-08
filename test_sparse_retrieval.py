@@ -1,7 +1,7 @@
 """
 test_sparse_retrieval.py
 
-Session 5 — BM25 Sparse Retrieval
+BM25 Sparse Retrieval
 
 Runs the same query as Session 4 ("What is Infosys revenue from North America?")
 but through BM25 instead of dense vector search.

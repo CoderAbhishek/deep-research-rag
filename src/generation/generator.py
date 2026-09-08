@@ -24,47 +24,9 @@ import os
 from typing import List, Dict, Any
 from groq import Groq
 
-# ─── Constants ────────────────────────────────────────────────────────────────
 
-# Module-level constant so every function in this module uses the same model.
-# Change this one line to switch models globally.
-# We use compound-mini because it is available on this Groq account.
-# For production: groq/llama-3.1-70b-versatile gives better instruction
-# following at higher cost.
 DEFAULT_MODEL = "compound-beta-mini"
 
-
-# ─── System prompt ────────────────────────────────────────────────────────────
-
-# The system prompt sets the model's role, constraints, and output rules.
-# It is sent as the "system" role message — the model treats this as an
-# authoritative instruction that applies to everything in the conversation.
-#
-# Key choices in this prompt:
-#
-# "ONLY the context provided" — grounding instruction. Without this,
-# the model will answer from parametric knowledge (its training data),
-# which may be stale or wrong.
-#
-# "Do not use any knowledge not present in the context" — this restatement
-# is intentional. Prompt engineering research shows that repeating a
-# constraint in different words improves adherence. One phrasing may slip
-# past the model's attention; two phrasings make the constraint harder to
-# ignore.
-#
-# "Every factual claim must be attributed to a [SOURCE X] label" — forces
-# the model to think about which chunk supports each claim. This has a
-# secondary benefit: the model is less likely to hallucinate a claim it
-# cannot attribute.
-#
-# "say exactly: 'The provided documents...'" — giving the model a specific
-# fallback phrase to use prevents it from generating a vague hedge like
-# "I'm not sure about this, but..." while still answering. We want a
-# clean binary: answer or refuse.
-#
-# "Do not infer or calculate" — prevents the model from doing arithmetic
-# on retrieved figures (e.g., calculating percentages from raw numbers).
-# We only want facts that appear verbatim in the text.
 
 SYSTEM_PROMPT = """You are a research analyst assistant. You answer questions about business documents.
 
@@ -75,8 +37,6 @@ STRICT RULES — follow these exactly:
 4. Copy numbers, names, and figures exactly as they appear in the sources. Do not round, convert, or paraphrase figures.
 5. Do not infer, calculate, or extrapolate beyond what the sources explicitly state."""
 
-
-# ─── Context formatting ───────────────────────────────────────────────────────
 
 def format_context(chunks: List[Dict[str, Any]]) -> str:
     """
@@ -115,20 +75,15 @@ def format_context(chunks: List[Dict[str, Any]]) -> str:
     """
     parts = []
     for i, chunk in enumerate(chunks, start=1):
-        # Extract metadata with safe defaults.
         meta = chunk["metadata"]
         file_name   = meta.get("file_name",   "unknown")
         page_number = meta.get("page_number", "?")
 
-        # Build the label line and combine with chunk text.
         label = f"[SOURCE {i}] File: {file_name} | Page: {page_number}"
         parts.append(f"{label}\n{chunk['text']}")
 
-    # Blank line between chunks — makes them visually distinct in the prompt.
     return "\n\n".join(parts)
 
-
-# ─── Answer generation ────────────────────────────────────────────────────────
 
 def generate_answer(
     query: str,
@@ -170,22 +125,10 @@ def generate_answer(
     many chunks, from which sources. Without this, debugging a wrong answer
     requires reconstructing the entire query session from logs.
     """
-    # Lazy client creation: Groq client is created inside the function,
-    # not at module level. This means importing generator.py does not
-    # fail if GROQ_API_KEY is absent (e.g., during unit testing with
-    # mocked environment). The error is raised only when generate_answer()
-    # is actually called.
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
-    # Build the context string from retrieved chunks.
     context = format_context(chunks)
 
-    # User message: context first, then question.
-    # The "context first" ordering matters: LLMs tend to give more weight
-    # to information near the beginning of the context window. Placing
-    # the retrieved evidence before the question means the model reads
-    # the evidence before seeing what it is being asked — priming it to
-    # anchor its answer in the provided text rather than its priors.
     user_message = f"""Context documents:
 
 {context}
@@ -196,13 +139,6 @@ Question: {query}
 
 Answer the question using only the context documents above. Cite your sources using the [SOURCE X] labels."""
 
-    # API call.
-    # temperature=0.1: near-deterministic. We want the model to reproduce
-    # figures exactly, not rephrase them. Higher temperature = more creative
-    # = more risk of paraphrasing "₹1,00,167 crore" as "approximately
-    # ₹1 lakh crore" or hallucinating adjacent figures.
-    # max_tokens=512: enough for a detailed cited answer (typically 150-300
-    # tokens for our query type). Capping prevents runaway generation.
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -213,13 +149,8 @@ Answer the question using only the context documents above. Cite your sources us
         max_tokens=512,
     )
 
-    # Extract the answer text from the response object.
-    # response.choices[0].message.content is the standard OpenAI-compatible
-    # response format that Groq follows.
     answer = response.choices[0].message.content
 
-    # Build source list in [SOURCE X] order so the caller can display
-    # or log which documents contributed to the answer.
     sources = [
         {
             "source_num":   i + 1,

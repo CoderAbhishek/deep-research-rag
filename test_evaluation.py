@@ -1,5 +1,5 @@
 """
-Session 10 — RAGAS evaluation test.
+RAGAS evaluation test.
 
 Run from the project root:
     python test_evaluation.py

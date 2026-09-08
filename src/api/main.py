@@ -18,9 +18,6 @@ from src.pipeline.rag_pipeline import load_resources, run_pipeline
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
 
 class QueryRequest(BaseModel):
     """Incoming request body for POST /query."""
@@ -50,26 +47,14 @@ class HealthResponse(BaseModel):
     pipeline_loaded: bool
 
 
-# ---------------------------------------------------------------------------
-# Lifespan (startup / shutdown)
-# ---------------------------------------------------------------------------
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load heavy resources once at startup; yield; teardown on shutdown."""
     if not os.environ.get("GROQ_API_KEY"):
         raise RuntimeError("GROQ_API_KEY not set — check .env")
-    # load_resources() returns a dict with:
-    #   embed_model, chroma_collection, bm25_index, corpus_chunks,
-    #   reranker, groq_client, llm_model
     app.state.resources = load_resources()
     yield
-    # Nothing to release explicitly; GC handles model objects.
 
-
-# ---------------------------------------------------------------------------
-# App
-# ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="Deep Research RAG API",
@@ -81,10 +66,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:

@@ -46,7 +46,6 @@ def build_bm25_index(
         to the original chunk metadata. The index alone knows only positions
         (0, 1, 2, ...) — not document content or metadata.
     """
-    # Fetch all documents and metadata from ChromaDB
     result = collection.get(include=["documents", "metadatas"])
     chunks = [
         {"text": doc, "metadata": meta}
@@ -58,9 +57,6 @@ def build_bm25_index(
 
     print("Building BM25 index...")
     bm25 = BM25Okapi(tokenized_corpus)
-    # BM25Okapi uses k1=1.5, b=0.75 by default — the standard Okapi BM25 parameters.
-    # k1 controls term saturation. b controls length normalisation.
-    # You can override: BM25Okapi(corpus, k1=1.2, b=0.5)
 
     print(f"BM25 index ready. Corpus: {len(chunks)} chunks.")
     return bm25, chunks
@@ -87,18 +83,11 @@ def search_bm25(
         List of result dicts sorted by BM25 score (highest first).
         Each dict contains: rank, score, text, metadata.
     """
-    # Tokenise the query the same way we tokenised the corpus.
-    # If you tokenise differently at index time vs query time, scores are meaningless.
     query_tokens = tokenize(query)
     print(f"Query tokens: {query_tokens}")
 
-    # get_scores() returns a NumPy array of length = corpus size.
-    # Each element is the BM25 score for the corresponding chunk.
-    # Chunks with no query terms get a score of 0.0.
     scores = bm25.get_scores(query_tokens)
 
-    # Sort all indices by score descending, take the top n.
-    # We sort indices (not scores directly) so we can map back to chunks.
     top_indices = sorted(
         range(len(scores)),
         key=lambda i: scores[i],

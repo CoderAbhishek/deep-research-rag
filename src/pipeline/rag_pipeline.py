@@ -1,9 +1,6 @@
 """
 rag_pipeline.py — Full end-to-end RAG pipeline assembly.
 
-This module wires together every component built in Sessions 3–9 into a
-single callable function: run_pipeline(query) → answer + sources.
-
 Pipeline stages (in order):
 1. HyDE generation      — LLM generates a hypothetical document passage
 2. Dense retrieval       — embed HyDE passage, query ChromaDB for top-N
@@ -39,11 +36,6 @@ from src.retrieval.query   import generate_hyde
 from src.retrieval.reranker import load_reranker, rerank, deduplicate_by_page
 from src.generation.generator import generate_answer
 
-# ─── Config ──────────────────────────────────────────────────────────────────
-
-# These match the values used throughout the test scripts.
-# Centralising them here means the pipeline uses the same settings as
-# the individual-component tests — no drift between experiment and production.
 
 CHROMA_PATH   = "./chroma_db"
 COLLECTION    = "documents"
@@ -54,8 +46,6 @@ POOL_SIZE      = 20   # candidates retrieved from each system (dense, BM25)
 TOP_K_RERANK   = 5    # candidates passed to cross-encoder (from RRF pool)
 TOP_K_GENERATE = 5    # chunks passed to LLM for generation
 
-
-# ─── Resource loading ─────────────────────────────────────────────────────────
 
 def load_resources():
     """
@@ -81,9 +71,6 @@ def load_resources():
     embed_model = SentenceTransformer(EMBED_MODEL)
 
     print("Building BM25 index...")
-    # build_bm25_index now accepts a Collection directly (Session 8 fix).
-    # It calls collection.get() internally — the caller does not need to
-    # pre-fetch anything.
     bm25, chunks = build_bm25_index(collection)
     print(f"  BM25 index: {len(chunks)} chunks")
 
@@ -98,8 +85,6 @@ def load_resources():
         "reranker":    reranker,
     }
 
-
-# ─── Individual pipeline stages (each traced separately in LangSmith) ─────────
 
 @traceable(name="1. HyDE Generation")
 def stage_hyde(query: str) -> str:
@@ -199,8 +184,6 @@ def stage_generate(query: str, chunks: list) -> dict:
     return generate_answer(query, chunks)
 
 
-# ─── Full pipeline ────────────────────────────────────────────────────────────
-
 @traceable(name="RAG Pipeline")
 def run_pipeline(
     query: str,
@@ -249,12 +232,10 @@ def run_pipeline(
         print(f"Query: {query}")
         print(f"{'='*60}")
 
-    # Stage 1: HyDE
     if verbose: print("\n[Stage 1] Generating HyDE passage...")
     hyde_passage = stage_hyde(query)
     if verbose: print(f"  HyDE passage ({len(hyde_passage)} chars) generated.")
 
-    # Stage 2: Dense retrieval on HyDE passage
     if verbose: print(f"\n[Stage 2] Dense retrieval (top-{pool_size})...")
     dense_results = stage_dense(
         hyde_passage,
@@ -264,7 +245,6 @@ def run_pipeline(
     )
     if verbose: print(f"  {len(dense_results)} dense candidates.")
 
-    # Stage 3: BM25 retrieval on original query
     if verbose: print(f"\n[Stage 3] BM25 retrieval (top-{pool_size})...")
     bm25_results = stage_bm25(
         query,
@@ -274,12 +254,10 @@ def run_pipeline(
     )
     if verbose: print(f"  {len(bm25_results)} BM25 candidates.")
 
-    # Stage 4: RRF fusion
     if verbose: print("\n[Stage 4] RRF fusion...")
     rrf_pool = stage_rrf(dense_results, bm25_results, n_results=pool_size)
     if verbose: print(f"  RRF pool: {len(rrf_pool)} candidates.")
 
-    # Stage 5: Cross-encoder reranking
     if verbose: print(f"\n[Stage 5] Cross-encoder reranking (top-{top_k_rerank})...")
     reranked = stage_rerank(
         query,
@@ -289,7 +267,6 @@ def run_pipeline(
     )
     if verbose: print(f"  Reranked: {len(reranked)} candidates.")
 
-    # Stage 6: Page deduplication
     if verbose: print("\n[Stage 6] Page-level deduplication...")
     deduped = stage_dedup(reranked)
     if verbose:
@@ -300,12 +277,10 @@ def run_pipeline(
                   f"CE={c.get('rerank_score', 'n/a'):.4f}  "
                   f"{meta.get('file_name', '')}")
 
-    # Stage 7: Generation — use top top_k_generate chunks after dedup
     generation_chunks = deduped[:top_k_generate]
     if verbose: print(f"\n[Stage 7] Generating answer from {len(generation_chunks)} chunks...")
     result = stage_generate(query, generation_chunks)
 
-    # Add pipeline metadata to the result dict
     result["contexts"]          = [c["text"] for c in generation_chunks]   # Session 10
     result["hyde_passage"]      = hyde_passage
     result["rrf_pool_size"]     = len(rrf_pool)

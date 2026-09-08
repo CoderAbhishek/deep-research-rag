@@ -1,5 +1,5 @@
 """
-Session 11 — FastAPI layer test.
+FastAPI layer test.
 
 Run from the project root:
     python test_api.py

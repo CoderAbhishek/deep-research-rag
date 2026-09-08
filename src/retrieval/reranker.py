@@ -55,26 +55,18 @@ def rerank(
     if not candidates:
         return []
 
-    # Build input pairs: list of (query, document_text) tuples
-    # The cross-encoder tokenises these as a single sequence:
-    # [CLS] query tokens [SEP] document tokens [SEP]
     pairs = [(query, c["text"]) for c in candidates]
 
-    # Score all pairs in one forward pass (batched internally)
-    # Returns a numpy array of floats, one per pair
     scores = reranker.predict(pairs)
 
-    # Attach score to each candidate (copy so we don't mutate the input)
     scored = []
     for candidate, score in zip(candidates, scores):
         entry = dict(candidate)
         entry["rerank_score"] = float(score)
         scored.append(entry)
 
-    # Sort descending by cross-encoder score
     scored.sort(key=lambda x: x["rerank_score"], reverse=True)
 
-    # Re-assign rank positions for the reranked list
     results = []
     for rank_idx, entry in enumerate(scored[:n_results]):
         entry["rank"] = rank_idx + 1
@@ -118,9 +110,6 @@ def deduplicate_by_page(
     deduplicated = []
 
     for chunk in results:
-        # Build the deduplication key from file name + page number.
-        # We use .get() with defaults so the function does not crash if
-        # metadata is incomplete — a defensive pattern for production code.
         file_name  = chunk["metadata"].get("file_name",  "unknown")
         page_number = chunk["metadata"].get("page_number", -1)
         key = (file_name, page_number)
@@ -129,9 +118,6 @@ def deduplicate_by_page(
             seen.add(key)
             deduplicated.append(chunk)
 
-    # Reassign ranks 1..N after deduplication.
-    # The original rank values from rerank() are now stale — rank 4 might
-    # have become rank 2 if the intervening chunks were duplicates.
     for new_rank, chunk in enumerate(deduplicated, start=1):
         chunk["rank"] = new_rank
 

@@ -22,19 +22,11 @@ import numpy as np
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
 
 
-# ---------------------------------------------------------------------------
-# Sentence splitting
-# ---------------------------------------------------------------------------
-
 def split_sentences(text: str) -> List[str]:
     """Split text into sentences on .!? boundaries."""
     parts = re.split(r"(?<=[.!?])\s+", text.strip())
     return [p.strip() for p in parts if len(p.strip()) > 8]
 
-
-# ---------------------------------------------------------------------------
-# Metric 1: Faithfulness
-# ---------------------------------------------------------------------------
 
 def compute_faithfulness(
     answer: str,
@@ -66,10 +58,6 @@ def compute_faithfulness(
     return supported / len(sentences)
 
 
-# ---------------------------------------------------------------------------
-# Metric 2: Answer Relevancy
-# ---------------------------------------------------------------------------
-
 def compute_answer_relevancy(
     question: str,
     answer: str,
@@ -89,10 +77,6 @@ def compute_answer_relevancy(
     a_emb = embed_model.encode(answer,   normalize_embeddings=True)
     return float(np.dot(q_emb, a_emb))
 
-
-# ---------------------------------------------------------------------------
-# Metric 3: Context Precision
-# ---------------------------------------------------------------------------
 
 def compute_context_precision(
     reference: str,
@@ -126,10 +110,6 @@ def compute_context_precision(
     return weighted_sum / total
 
 
-# ---------------------------------------------------------------------------
-# Metric 4: Context Recall
-# ---------------------------------------------------------------------------
-
 def compute_context_recall(
     reference: str,
     contexts: List[str],
@@ -158,19 +138,11 @@ def compute_context_recall(
     return supported / len(sentences)
 
 
-# ---------------------------------------------------------------------------
-# Ground truth
-# ---------------------------------------------------------------------------
-
 def load_ground_truth(path: str = "data/ground_truth.json") -> List[Dict[str, str]]:
     """Load hand-written QA pairs from disk."""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
-# ---------------------------------------------------------------------------
-# Pipeline runner
-# ---------------------------------------------------------------------------
 
 def collect_pipeline_outputs(
     ground_truth: List[Dict[str, str]],
@@ -201,10 +173,6 @@ def collect_pipeline_outputs(
     return rows
 
 
-# ---------------------------------------------------------------------------
-# Score
-# ---------------------------------------------------------------------------
-
 def score_all(rows: List[Dict[str, Any]], resources: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Compute all four metrics for every row. No API calls."""
     reranker    = resources["reranker"]
@@ -221,10 +189,6 @@ def score_all(rows: List[Dict[str, Any]], resources: Dict[str, Any]) -> List[Dic
         })
     return scored
 
-
-# ---------------------------------------------------------------------------
-# Display
-# ---------------------------------------------------------------------------
 
 METRICS = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
 
@@ -271,10 +235,6 @@ def save_csv(scored: List[Dict[str, Any]], path: str = "data/ragas_results.csv")
             writer.writerow({k: row.get(k, "") for k in fields})
     print(f"\nResults saved to {path}")
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def run_evaluation(ground_truth_path: str = "data/ground_truth.json") -> None:
     print("Loading pipeline resources...")

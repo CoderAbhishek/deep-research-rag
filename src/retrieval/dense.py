@@ -50,11 +50,8 @@ def search_dense(
         We convert so that score=1.0 is a perfect match (consistent
         with what an interviewer expects "score" to mean).
     """
-    # Embed the query — encode() returns a (1, 384) array; [0] gives the vector
     query_embedding = model.encode([query])[0]
 
-    # ChromaDB returns results nested in lists-of-lists because it supports
-    # batch queries. results["documents"][0] is the list for our single query.
     results = collection.query(
         query_embeddings=[query_embedding.tolist()],
         n_results=n_results,

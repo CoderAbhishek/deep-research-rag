@@ -52,8 +52,6 @@ def reciprocal_rank_fusion(
         Both dense and BM25 retrieve from the same ChromaDB-backed corpus,
         so the same chunk will have identical metadata in both result lists.
     """
-    # rrf_scores: maps chunk_key → accumulated RRF score
-    # doc_store:  maps chunk_key → the full chunk dict (text + metadata)
     rrf_scores: Dict[str, float] = {}
     doc_store: Dict[str, Dict[str, Any]] = {}
 
@@ -61,21 +59,13 @@ def reciprocal_rank_fusion(
         for rank_idx, chunk in enumerate(ranked_list):
             m = chunk["metadata"]
 
-            # Build the unique identity key for this chunk
             key = f"{m['file_name']}_p{m['page_number']}_c{m['chunk_index']}"
 
-            # rank_idx is 0-based (rank_idx=0 → best result).
-            # The formula uses 1-based rank, so: rank = rank_idx + 1.
-            # → contribution = 1 / (rank_idx + 1 + k)
             rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (rank_idx + 1 + k)
 
-            # Store the chunk the first time we see it.
-            # Both systems return the same text and metadata for the same chunk,
-            # so it doesn't matter which system's copy we keep.
             if key not in doc_store:
                 doc_store[key] = chunk
 
-    # Sort all keys by accumulated RRF score, descending
     sorted_keys = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
     top_keys = sorted_keys[:n_results]
 

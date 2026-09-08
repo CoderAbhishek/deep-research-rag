@@ -1,7 +1,7 @@
 """
 test_hybrid_retrieval.py
 
-Session 6 — Hybrid Search + Reciprocal Rank Fusion
+Hybrid Search + Reciprocal Rank Fusion
 
 Runs the same query ("What is Infosys revenue from North America?") through
 three retrieval methods and prints them side by side:

@@ -7,7 +7,7 @@ sentence-transformers==3.4.1
 # Vector store
 chromadb==0.6.3
 
-# LLM orchestration (used from Session 9 onward; installed now)
+# LLM orchestration
 langchain==0.3.25
 langchain-community==0.3.24
 langchain-groq==0.3.2
@@ -21,13 +21,14 @@ python-dotenv==1.0.1
 # UI (baseline and final)
 streamlit==1.43.2
 
-# Sparse retrieval (Session 5)
+# Sparse retrieval 
 rank-bm25==0.2.2
 
-# Evaluation (Session 10)
+# Evaluation 
 ragas==0.2.14
 
-# API layer (Session 11)
+# API layer 
 fastapi==0.115.11
 uvicorn==0.34.0
 pydantic==2.10.6
+# gradio==3.43.0
