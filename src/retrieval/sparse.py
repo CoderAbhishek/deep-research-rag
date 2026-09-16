@@ -1,6 +1,9 @@
+import logging
 import re
 from rank_bm25 import BM25Okapi
 from typing import List, Dict, Any, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def tokenize(text: str) -> List[str]:
@@ -52,13 +55,13 @@ def build_bm25_index(
         for doc, meta in zip(result["documents"], result["metadatas"])
     ]
 
-    print(f"Tokenising {len(chunks)} chunks...")
+    logger.info("Tokenising %d chunks...", len(chunks))
     tokenized_corpus = [tokenize(chunk["text"]) for chunk in chunks]
 
-    print("Building BM25 index...")
+    logger.info("Building BM25 index...")
     bm25 = BM25Okapi(tokenized_corpus)
 
-    print(f"BM25 index ready. Corpus: {len(chunks)} chunks.")
+    logger.info("BM25 index ready. Corpus: %d chunks.", len(chunks))
     return bm25, chunks
 
 
@@ -84,7 +87,7 @@ def search_bm25(
         Each dict contains: rank, score, text, metadata.
     """
     query_tokens = tokenize(query)
-    print(f"Query tokens: {query_tokens}")
+    logger.debug("Query tokens: %s", query_tokens)
 
     scores = bm25.get_scores(query_tokens)
 

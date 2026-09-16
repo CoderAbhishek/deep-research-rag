@@ -18,28 +18,38 @@ This is essential for debugging: when the answer is wrong, you can tell
 immediately whether retrieval returned the wrong chunks (retrieval problem)
 or the LLM ignored the correct chunks (generation problem).
 
+Logging:
+Set LOG_LEVEL=DEBUG in your .env to enable per-chunk debug output at each
+pipeline stage (chunk text, cross-encoder score, file name, page number).
+Default level is INFO — stage-level progress only.
+
 Environment variables required (all in .env):
     GROQ_API_KEY         — for HyDE generation and answer generation
     LANGSMITH_API_KEY    — for LangSmith tracing
     LANGCHAIN_PROJECT    — project name shown in LangSmith UI (optional)
+    LOG_LEVEL            — logging verbosity: DEBUG | INFO | WARNING (default: INFO)
 """
 
+import logging
 import os
-import chromadb
-from sentence_transformers import SentenceTransformer
-from langsmith import traceable
+import time
 
-from src.retrieval.sparse  import build_bm25_index, search_bm25
+import chromadb
+from langsmith import traceable
+from sentence_transformers import SentenceTransformer
+
+from src.generation.generator import generate_answer
 from src.retrieval.dense   import search_dense
 from src.retrieval.hybrid  import reciprocal_rank_fusion
 from src.retrieval.query   import generate_hyde
-from src.retrieval.reranker import load_reranker, rerank, deduplicate_by_page
-from src.generation.generator import generate_answer
+from src.retrieval.reranker import deduplicate_by_page, load_reranker, rerank
+from src.retrieval.sparse  import build_bm25_index, search_bm25
 
+logger = logging.getLogger(__name__)
 
-CHROMA_PATH   = "./chroma_db"
-COLLECTION    = "documents"
-EMBED_MODEL   = "all-MiniLM-L6-v2"
+CHROMA_PATH    = "./chroma_db"
+COLLECTION     = "documents"
+EMBED_MODEL    = "all-MiniLM-L6-v2"
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 POOL_SIZE      = 20   # candidates retrieved from each system (dense, BM25)
@@ -63,18 +73,18 @@ def load_resources():
     Returns:
         dict with keys: 'collection', 'embed_model', 'bm25', 'chunks', 'reranker'
     """
-    print("Loading ChromaDB...")
+    logger.info("Loading ChromaDB...")
     client     = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_collection(name=COLLECTION)
 
-    print("Loading embedding model...")
+    logger.info("Loading embedding model...")
     embed_model = SentenceTransformer(EMBED_MODEL)
 
-    print("Building BM25 index...")
+    logger.info("Building BM25 index...")
     bm25, chunks = build_bm25_index(collection)
-    print(f"  BM25 index: {len(chunks)} chunks")
+    logger.info("  BM25 index: %d chunks", len(chunks))
 
-    print("Loading cross-encoder reranker...")
+    logger.info("Loading cross-encoder reranker...")
     reranker = load_reranker(RERANKER_MODEL)
 
     return {
@@ -191,7 +201,6 @@ def run_pipeline(
     pool_size:      int = POOL_SIZE,
     top_k_rerank:   int = TOP_K_RERANK,
     top_k_generate: int = TOP_K_GENERATE,
-    verbose:        bool = True,
 ) -> dict:
     """
     Run the full RAG pipeline end-to-end.
@@ -200,6 +209,10 @@ def run_pipeline(
     LangSmith. Every @traceable stage function called inside here becomes
     a child run under this parent — you see the full tree in the LangSmith
     UI: RAG Pipeline → HyDE Generation → Dense Retrieval → ... → LLM Generation.
+
+    Progress is logged at INFO level. Set LOG_LEVEL=DEBUG in .env to see
+    per-chunk details (chunk text, cross-encoder score, file, page) at each
+    stage — no code changes required.
 
     Args:
         query:          User's question.
@@ -213,7 +226,6 @@ def run_pipeline(
                         (query, chunk) pairs. Default 5.
         top_k_generate: Chunks to pass to the LLM after deduplication.
                         Typically ≤ top_k_rerank. Default 5.
-        verbose:        If True, print stage-by-stage progress to stdout.
 
     Returns:
         Dict with:
@@ -226,74 +238,114 @@ def run_pipeline(
             'rrf_pool_size'    — how many candidates entered the RRF pool
             'reranked_count'   — how many candidates went to the cross-encoder
             'final_chunk_count'— chunks after deduplication
+            'timings'          — per-stage wall-clock seconds + total
     """
-    if verbose:
-        print(f"\n{'='*60}")
-        print(f"Query: {query}")
-        print(f"{'='*60}")
+    t_pipeline_start = time.time()
 
-    if verbose: print("\n[Stage 1] Generating HyDE passage...")
+    logger.info("=" * 60)
+    logger.info("Query: %s", query)
+    logger.info("=" * 60)
+
+    # Stage 1 — HyDE
+    logger.info("[Stage 1] Generating HyDE passage...")
+    t0 = time.time()
     hyde_passage = stage_hyde(query)
-    if verbose: print(f"  HyDE passage ({len(hyde_passage)} chars) generated.")
+    t_hyde = time.time() - t0
+    logger.info("  HyDE passage (%d chars) generated in %.2fs.", len(hyde_passage), t_hyde)
 
-    if verbose: print(f"\n[Stage 2] Dense retrieval (top-{pool_size})...")
+    # Stage 2 — Dense retrieval
+    logger.info("[Stage 2] Dense retrieval (top-%d)...", pool_size)
+    t0 = time.time()
     dense_results = stage_dense(
         hyde_passage,
         resources["collection"],
         resources["embed_model"],
         n_results=pool_size,
     )
-    if verbose: print(f"  {len(dense_results)} dense candidates.")
+    t_dense = time.time() - t0
+    logger.info("  %d dense candidates in %.2fs.", len(dense_results), t_dense)
 
-    if verbose: print(f"\n[Stage 3] BM25 retrieval (top-{pool_size})...")
+    # Stage 3 — BM25 retrieval
+    logger.info("[Stage 3] BM25 retrieval (top-%d)...", pool_size)
+    t0 = time.time()
     bm25_results = stage_bm25(
         query,
         resources["bm25"],
         resources["chunks"],
         n_results=pool_size,
     )
-    if verbose: print(f"  {len(bm25_results)} BM25 candidates.")
+    t_bm25 = time.time() - t0
+    logger.info("  %d BM25 candidates in %.2fs.", len(bm25_results), t_bm25)
 
-    if verbose: print("\n[Stage 4] RRF fusion...")
+    # Stage 4 — RRF fusion
+    logger.info("[Stage 4] RRF fusion...")
+    t0 = time.time()
     rrf_pool = stage_rrf(dense_results, bm25_results, n_results=pool_size)
-    if verbose: print(f"  RRF pool: {len(rrf_pool)} candidates.")
+    t_rrf = time.time() - t0
+    logger.info("  RRF pool: %d candidates in %.2fs.", len(rrf_pool), t_rrf)
 
-    if verbose: print(f"\n[Stage 5] Cross-encoder reranking (top-{top_k_rerank})...")
+    # Stage 5 — Cross-encoder reranking
+    logger.info("[Stage 5] Cross-encoder reranking (top-%d)...", top_k_rerank)
+    t0 = time.time()
     reranked = stage_rerank(
         query,
         rrf_pool,
         resources["reranker"],
         n_results=top_k_rerank,
     )
-    if verbose: print(f"  Reranked: {len(reranked)} candidates.")
+    t_rerank = time.time() - t0
+    logger.info("  Reranked: %d candidates in %.2fs.", len(reranked), t_rerank)
 
-    if verbose: print("\n[Stage 6] Page-level deduplication...")
+    # Stage 6 — Deduplication
+    logger.info("[Stage 6] Page-level deduplication...")
+    t0 = time.time()
     deduped = stage_dedup(reranked)
-    if verbose:
-        print(f"  After dedup: {len(deduped)} unique pages.")
-        for c in deduped:
-            meta = c["metadata"]
-            print(f"    Rank {c['rank']}  Page {meta.get('page_number')}  "
-                  f"CE={c.get('rerank_score', 'n/a'):.4f}  "
-                  f"{meta.get('file_name', '')}")
+    t_dedup = time.time() - t0
+    logger.info("  After dedup: %d unique pages in %.2fs.", len(deduped), t_dedup)
 
+    # DEBUG: per-chunk details after dedup (only emitted when LOG_LEVEL=DEBUG)
+    for c in deduped:
+        meta = c["metadata"]
+        logger.debug(
+            "    Rank %d  Page %s  CE=%.4f  %s | %.80s",
+            c["rank"],
+            meta.get("page_number"),
+            c.get("rerank_score", float("nan")),
+            meta.get("file_name", ""),
+            c["text"].replace("\n", " "),
+        )
+
+    # Stage 7 — LLM generation
     generation_chunks = deduped[:top_k_generate]
-    if verbose: print(f"\n[Stage 7] Generating answer from {len(generation_chunks)} chunks...")
+    logger.info("[Stage 7] Generating answer from %d chunks...", len(generation_chunks))
+    t0 = time.time()
     result = stage_generate(query, generation_chunks)
+    t_generate = time.time() - t0
+    logger.info("  Answer generated in %.2fs.", t_generate)
 
-    result["contexts"]          = [c["text"] for c in generation_chunks]   # Session 10
+    t_total = time.time() - t_pipeline_start
+
+    logger.info("─" * 60)
+    logger.info("ANSWER: %s", result["answer"])
+    logger.info("─" * 60)
+    for s in result["sources"]:
+        logger.info("  [SOURCE %d] %s — Page %s", s["source_num"], s["file_name"], s["page_number"])
+    logger.info("Total pipeline time: %.2fs", t_total)
+
+    result["contexts"]          = [c["text"] for c in generation_chunks]
     result["hyde_passage"]      = hyde_passage
     result["rrf_pool_size"]     = len(rrf_pool)
     result["reranked_count"]    = len(reranked)
     result["final_chunk_count"] = len(deduped)
-
-    if verbose:
-        print(f"\n{'─'*60}")
-        print("ANSWER:")
-        print(f"{'─'*60}")
-        print(result["answer"])
-        print(f"\nSources cited:")
-        for s in result["sources"]:
-            print(f"  [SOURCE {s['source_num']}] {s['file_name']} — Page {s['page_number']}")
+    result["timings"] = {
+        "hyde_s":     round(t_hyde,     3),
+        "dense_s":    round(t_dense,    3),
+        "bm25_s":     round(t_bm25,     3),
+        "rrf_s":      round(t_rrf,      3),
+        "rerank_s":   round(t_rerank,   3),
+        "dedup_s":    round(t_dedup,    3),
+        "generate_s": round(t_generate, 3),
+        "total_s":    round(t_total,    3),
+    }
 
     return result
