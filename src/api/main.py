@@ -94,7 +94,6 @@ def query(request: QueryRequest) -> QueryResponse:
         result = run_pipeline(
             request.question,
             app.state.resources,
-            verbose=request.verbose,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
