@@ -25,7 +25,7 @@ from typing import List, Dict, Any
 from groq import Groq
 
 
-DEFAULT_MODEL = "compound-beta-mini"
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 
 SYSTEM_PROMPT = """You are a research analyst assistant. You answer questions about business documents.

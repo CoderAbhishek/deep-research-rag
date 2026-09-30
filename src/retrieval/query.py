@@ -10,7 +10,7 @@ import os
 from typing import List
 from groq import Groq
 from dotenv import load_dotenv
-DEFAULT_MODEL = "groq/llama-3.1-8b-instant"
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 load_dotenv()
 
