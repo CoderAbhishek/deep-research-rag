@@ -1,3 +1,4 @@
+import logging
 from sentence_transformers import SentenceTransformer
 import chromadb
 from typing import List, Dict, Any
@@ -6,11 +7,13 @@ import os
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 
 def get_embedding_model(model_name: str = "all-MiniLM-L6-v2") -> SentenceTransformer:
-    print(f"Loading embedding model: {model_name}")
+    logger.info("Loading embedding model: %s", model_name)
     model = SentenceTransformer(model_name)
-    print(f"Model loaded. Embedding dimension: {model.get_sentence_embedding_dimension()}")
+    logger.info("Model loaded. Embedding dimension: %d", model.get_sentence_embedding_dimension())
     return model
 
 
@@ -41,7 +44,7 @@ def embed_and_store(
         for m in metadatas
     ]
 
-    print(f"Embedding {len(texts)} chunks...")
+    logger.info("Embedding %d chunks...", len(texts))
     embeddings = model.encode(texts, show_progress_bar=True, batch_size=32)
 
     collection.add(
@@ -51,5 +54,5 @@ def embed_and_store(
         ids=ids,
     )
 
-    print(f"Stored {len(texts)} chunks in collection '{collection_name}'")
+    logger.info("Stored %d chunks in collection %r", len(texts), collection_name)
     return collection

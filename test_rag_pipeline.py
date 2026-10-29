@@ -27,7 +27,10 @@ load_dotenv()
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 os.environ.setdefault("LANGCHAIN_PROJECT",    "deep-research-rag")
 
+from src.observability.logging_config import setup_logging
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
+
+setup_logging()  # stage-by-stage progress now comes from logging
 
 # ─── Test queries ─────────────────────────────────────────────────────────────
 # Using two queries:
@@ -48,5 +51,16 @@ print("\nAll resources loaded. Running queries...\n")
 
 # ─── Run pipeline for each query ─────────────────────────────────────────────
 for query in QUERIES:
-    result = run_pipeline(query, resources, verbose=True)
-    print("\n" + "=" * 60 + "\n")
+    result = run_pipeline(query, resources)
+    debug = result["debug"]
+    print("\n" + "=" * 60)
+    print(f"Q: {query}")
+    print(f"A: {result['answer']}")
+    for s in result["sources"]:
+        print(f"   [SOURCE {s['source_num']}] {s['file_name']} p.{s['page_number']}")
+    if not result["sources"]:
+        print("   (no sources cited)")
+    print(f"Timings (s): {debug['timings_s']}")
+    print(f"Tokens: {debug['total_tokens']}   Estimated cost (USD): {debug['total_cost_usd']}")
+    print(f"Trace ID: {result['trace_id']}")
+    print("=" * 60 + "\n")

@@ -1,6 +1,9 @@
+import logging
 import fitz                          # PyMuPDF — the library is called "fitz" historically
 from pathlib import Path             # Modern Python path handling (safer than raw strings)
 from typing import List, Dict, Any   # Type hints — make the code self-documenting
+
+logger = logging.getLogger(__name__)
 
 
 def load_pdf(file_path: str) -> List[Dict[str, Any]]:
@@ -76,17 +79,17 @@ def load_documents_from_directory(directory_path: str) -> List[Dict[str, Any]]:
     if not pdf_files:
         raise ValueError(f"No PDF files found in: {directory_path}")
 
-    print(f"Found {len(pdf_files)} PDF file(s):")
+    logger.info("Found %d PDF file(s):", len(pdf_files))
     for pdf in pdf_files:
-        print(f"  - {pdf.name}")
+        logger.info("  - %s", pdf.name)
 
     all_pages = []
 
     for pdf_path in pdf_files:
-        print(f"\nLoading: {pdf_path.name}")
+        logger.info("Loading: %s", pdf_path.name)
         pages = load_pdf(str(pdf_path))
-        print(f"  Extracted {len(pages)} non-empty pages")
+        logger.info("  Extracted %d non-empty pages", len(pages))
         all_pages.extend(pages)
 
-    print(f"\nTotal pages across all documents: {len(all_pages)}")
+    logger.info("Total pages across all documents: %d", len(all_pages))
     return all_pages

@@ -9,19 +9,23 @@ Then open: http://localhost:7860
 import logging
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
+from src.observability.logging_config import new_request_id, setup_logging
+from src.observability.tracing import log_tracing_status
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
 
-load_dotenv()
+load_dotenv()      # first, so LOG_LEVEL and the LangSmith variables are visible
+setup_logging()    # configure logging once, before anything logs
 
 logger = logging.getLogger(__name__)
 
-print("Loading pipeline resources…")
+log_tracing_status(logger)
+logger.info("Loading pipeline resources...")
 _resources = load_resources()
-print("Ready.")
+logger.info("Ready. Open http://localhost:%s", os.getenv("PORT", "7860"))
 
 app = FastAPI()
 
@@ -31,19 +35,31 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/query")
-def query(req: QueryRequest):
+def query(req: QueryRequest, response: Response):
+    # One ID per request: stamped on every log line for this request,
+    # attached to the LangSmith trace, and returned to the browser.
+    request_id = new_request_id()
+    response.headers["X-Request-ID"] = request_id
     question = (req.question or "").strip()
     if not question:
         raise HTTPException(status_code=422, detail="Please enter a question.")
+    logger.info("Demo UI request: %d-char question", len(question))
     try:
-        result = run_pipeline(question, _resources)
+        result = run_pipeline(
+            question,
+            _resources,
+            langsmith_extra={
+                "metadata": {"request_id": request_id, "entrypoint": "demo-ui"},
+                "tags": ["demo-ui"],
+            },
+        )
     except Exception:
         # Full error goes to the server log; the browser gets a short, safe message
         # with a real error status instead of a 200 that looks like an answer.
         logger.exception("Pipeline failed for question: %r", question)
         raise HTTPException(
             status_code=500,
-            detail="The pipeline could not answer this question. Please try again later.",
+            detail=f"The pipeline could not answer this question. Please try again later. (request id {request_id})",
         )
     # Return only what the UI renders. Internal fields (retrieved contexts,
     # HyDE passage, pool sizes) stay on the server.
@@ -51,6 +67,7 @@ def query(req: QueryRequest):
         "answer": result["answer"],
         "sources": result["sources"],
         "model": result.get("model", ""),
+        "request_id": request_id,
     }
 
 
@@ -200,6 +217,7 @@ async function ask() {
     if (srcs.length > 0) {
       document.getElementById("sources-text").innerHTML = srcs.map(s => `<div class="source-item"><strong>[${s.source_num}]</strong> <code>${s.file_name}</code> — Page <strong>${s.page_number}</strong></div>`).join("");
     } else { document.getElementById("sources-text").textContent = "No sources cited."; }
+    if (data.request_id) { document.getElementById("sources-text").insertAdjacentHTML("beforeend", `<div class="source-item" style="margin-top:10px;color:#4a4a68;">Request ID: <code>${data.request_id}</code></div>`); }
   } catch(err) {
     document.getElementById("answer-text").style.color = "#f08a8a";
     document.getElementById("answer-text").textContent = "Error: could not reach the server (" + err.message + ").";

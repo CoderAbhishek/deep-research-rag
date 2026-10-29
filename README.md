@@ -87,6 +87,7 @@ User Query
 | Containerisation | Docker + Docker Compose |
 | Deployment | Docker image (previously deployed on Railway; currently offline) |
 | Evaluation | Custom RAGAS-style metrics (not the `ragas` library); being rebuilt, see below |
+| Observability | Python `logging` with request IDs, LangSmith tracing, per-stage timings, token and cost logging |
 
 ---
 
@@ -111,6 +112,35 @@ A new evaluation set is in progress: 60-80 questions with page-level labels, bui
 
 ---
 
+## Observability
+
+**Logging.** Every module logs through Python's `logging`; entry points call `setup_logging()` once at startup. Set `LOG_LEVEL` in `.env` (`INFO` by default; `DEBUG` adds the HyDE passage and every candidate chunk). Every line carries the request ID:
+
+```
+14:02:11 INFO    [3f9c1a2b7d4e] src.pipeline.rag_pipeline: [5/7] Rerank: scored 20 pairs, kept 5 (top score 2.702) in 0.84s
+```
+
+Each query logs one line per stage (what it produced and how long it took), one line per LLM call (model, latency, prompt and completion tokens, `finish_reason`, estimated cost), a warning if an answer cites no sources or an LLM output looks truncated, and a final summary with total time, tokens and the LangSmith trace ID.
+
+**Tracing (LangSmith).** Set `LANGCHAIN_TRACING_V2=true`, `LANGSMITH_API_KEY` and `LANGCHAIN_PROJECT` in `.env`. The startup log says whether tracing is on. Each question produces one trace:
+
+```
+RAG Pipeline
+├── 1. HyDE Generation
+│   └── groq.chat (hyde)          LLM run: messages, output, tokens
+├── 2. Dense Retrieval
+├── 3. BM25 Retrieval
+├── 4. RRF Fusion
+├── 5. Cross-Encoder Reranking
+├── 6. Page Deduplication
+└── 7. LLM Generation
+    └── groq.chat (generation)    LLM run: messages, output, tokens
+```
+
+Each trace carries `request_id` and `entrypoint` (`api`, `demo-ui` or `evaluation`) metadata and a matching tag, so a log line, an API response and a trace can be matched by the same ID.
+
+**Debug payload.** `POST /query` with `"verbose": true` returns a `debug` object: stage counts, the RRF candidate pool, the reranked top 5 with cross-encoder scores, per-stage timings, and LLM usage and estimated cost.
+
 ## Project Structure
 
 ```
@@ -122,6 +152,8 @@ deep-research-rag/
 │   ├── generation/      # generator.py (grounded answer + citation parsing)
 │   ├── pipeline/        # rag_pipeline.py (7-stage orchestration)
 │   ├── evaluation/      # evaluator.py (local RAGAS-style metrics)
+│   ├── llm/             # groq_client.py (one traced, logged wrapper for every Groq call)
+│   ├── observability/   # logging_config.py (logging + request IDs), tracing.py (LangSmith status)
 │   └── api/             # main.py (FastAPI application)
 ├── chroma_db/           # Pre-populated vector store (committed to repo)
 ├── data/
@@ -227,11 +259,14 @@ Runs the full 7-stage pipeline.
   ],
   "query": "What is Infosys Cobalt?",
   "num_chunks": 4,
-  "model": "openai/gpt-oss-20b"
+  "model": "openai/gpt-oss-20b",
+  "request_id": "3f9c1a2b7d4e",
+  "trace_id": "1f0b6c2e-0000-0000-0000-000000000000",
+  "debug": null
 }
 ```
 
-`sources` lists only the sources the answer cites (empty if the system declines to answer). `retrieved_sources` lists every chunk passed to the model. The `verbose` request field is reserved and currently has no effect.
+`sources` lists only the sources the answer cites (empty if the system declines to answer). `retrieved_sources` lists every chunk passed to the model. `request_id` is also sent as the `X-Request-ID` header and appears in every server log line for the request. `trace_id` is the LangSmith trace ID (null when tracing is off). With `\"verbose\": true`, `debug` contains the pipeline debug payload.
 
 **Errors:**
 - `422` — empty or missing `question` field

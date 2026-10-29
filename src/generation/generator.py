@@ -20,10 +20,10 @@ Design principles:
    enemy — we want the model to copy figures accurately, not rephrase them.
 """
 
-import os
 import re
 from typing import List, Dict, Any
-from groq import Groq
+
+from src.llm.groq_client import chat
 
 
 DEFAULT_MODEL = "openai/gpt-oss-20b"
@@ -140,14 +140,14 @@ def generate_answer(
             'query'      — the original query (for logging/tracing)
             'num_chunks' — number of chunks fed to the model
             'model'      — the model used (for logging/tracing)
+            'llm'        - token usage, latency, finish_reason and
+                           estimated cost of the generation call
 
     Why we return metadata alongside the answer:
     In production, you need to log what model answered a query, with how
     many chunks, from which sources. Without this, debugging a wrong answer
     requires reconstructing the entire query session from logs.
     """
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
-
     context = format_context(chunks)
 
     user_message = f"""Context documents:
@@ -160,18 +160,19 @@ Question: {query}
 
 Answer the question using only the context documents above. Cite your sources using the [SOURCE X] labels."""
 
-    response = client.chat.completions.create(
-        model=model,
+    # The shared wrapper traces this call in LangSmith and logs model,
+    # latency, token usage, finish_reason and estimated cost.
+    llm = chat(
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": user_message},
         ],
+        model=model,
         temperature=0.1,
         max_tokens=512,
+        purpose="generation",
     )
-
-    # content can be None if the model returns no text; treat it as empty.
-    answer = response.choices[0].message.content or ""
+    answer = llm.text  # already "" if the model returned no content
 
     retrieved_sources = [
         {
@@ -193,4 +194,5 @@ Answer the question using only the context documents above. Cite your sources us
         "query":      query,
         "num_chunks": len(chunks),
         "model":      model,
+        "llm":        llm.stats(),
     }
