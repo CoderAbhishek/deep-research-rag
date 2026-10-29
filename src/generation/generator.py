@@ -21,6 +21,7 @@ Design principles:
 """
 
 import os
+import re
 from typing import List, Dict, Any
 from groq import Groq
 
@@ -85,6 +86,25 @@ def format_context(chunks: List[Dict[str, Any]]) -> str:
     return "\n\n".join(parts)
 
 
+# Matches citation labels such as "[SOURCE 2]" and "【SOURCE 2】".
+# The model sometimes uses full-width brackets and sometimes groups labels
+# ("[SOURCE 1, SOURCE 3]"), so we match the "SOURCE <n>" token itself
+# rather than the surrounding brackets.
+_CITATION_PATTERN = re.compile(r"SOURCE\s*(\d+)")
+
+
+def extract_cited_source_numbers(answer: str, num_chunks: int) -> List[int]:
+    """
+    Return the sorted, de-duplicated [SOURCE X] numbers cited in an answer.
+
+    Only numbers that match a chunk actually passed to the model
+    (1..num_chunks) are kept. A refusal, or an answer with no citation
+    labels, returns an empty list.
+    """
+    nums = {int(n) for n in _CITATION_PATTERN.findall(answer or "")}
+    return sorted(n for n in nums if 1 <= n <= num_chunks)
+
+
 def generate_answer(
     query: str,
     chunks: List[Dict[str, Any]],
@@ -107,15 +127,16 @@ def generate_answer(
         chunks: Retrieved and reranked chunks. These are the chunks the
                 cross-encoder selected as most relevant. Each must have
                 'text' and 'metadata' keys. Typically 3-7 chunks.
-        model:  Groq model identifier (without the "groq/" prefix that
-                the LiteLLM-style wrapper uses). Default is compound-beta-mini.
+        model:  Groq model identifier. Default is DEFAULT_MODEL.
 
     Returns:
         A dict with:
             'answer'     — the LLM's answer string
-            'sources'    — list of (file_name, page_number) tuples,
-                           one per chunk, in the same order as the
-                           [SOURCE X] labels in the context
+            'sources'    — only the sources the answer actually cites,
+                           parsed from its [SOURCE X] labels. Empty when
+                           the answer cites nothing (e.g. a refusal).
+            'retrieved_sources' — every chunk passed to the model, in
+                           [SOURCE X] order (for debugging and evaluation)
             'query'      — the original query (for logging/tracing)
             'num_chunks' — number of chunks fed to the model
             'model'      — the model used (for logging/tracing)
@@ -149,9 +170,10 @@ Answer the question using only the context documents above. Cite your sources us
         max_tokens=512,
     )
 
-    answer = response.choices[0].message.content
+    # content can be None if the model returns no text; treat it as empty.
+    answer = response.choices[0].message.content or ""
 
-    sources = [
+    retrieved_sources = [
         {
             "source_num":   i + 1,
             "file_name":    chunk["metadata"].get("file_name",   "unknown"),
@@ -160,9 +182,14 @@ Answer the question using only the context documents above. Cite your sources us
         for i, chunk in enumerate(chunks)
     ]
 
+    # Show only what the answer cites, not everything that was retrieved.
+    cited_nums = extract_cited_source_numbers(answer, num_chunks=len(chunks))
+    sources = [s for s in retrieved_sources if s["source_num"] in cited_nums]
+
     return {
         "answer":     answer,
         "sources":    sources,
+        "retrieved_sources": retrieved_sources,
         "query":      query,
         "num_chunks": len(chunks),
         "model":      model,

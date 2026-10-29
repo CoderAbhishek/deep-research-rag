@@ -6,15 +6,18 @@ Run: python app.py
 Then open: http://localhost:7860
 """
 
+import logging
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 print("Loading pipeline resources…")
 _resources = load_resources()
@@ -29,13 +32,26 @@ class QueryRequest(BaseModel):
 
 @app.post("/query")
 def query(req: QueryRequest):
-    if not req.question or not req.question.strip():
-        return {"answer": "Please enter a question.", "sources": []}
+    question = (req.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=422, detail="Please enter a question.")
     try:
-        result = run_pipeline(req.question.strip(), _resources)
-        return result
-    except Exception as exc:
-        return {"answer": f"Error: {exc}", "sources": []}
+        result = run_pipeline(question, _resources)
+    except Exception:
+        # Full error goes to the server log; the browser gets a short, safe message
+        # with a real error status instead of a 200 that looks like an answer.
+        logger.exception("Pipeline failed for question: %r", question)
+        raise HTTPException(
+            status_code=500,
+            detail="The pipeline could not answer this question. Please try again later.",
+        )
+    # Return only what the UI renders. Internal fields (retrieved contexts,
+    # HyDE passage, pool sizes) stay on the server.
+    return {
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "model": result.get("model", ""),
+    }
 
 
 HTML = """<!DOCTYPE html>
@@ -99,21 +115,32 @@ HTML = """<!DOCTYPE html>
       <span class="badge">Cross-Encoder Reranking</span>
       <span class="badge">Grounded Generation</span>
     </div>
-    <div class="desc">A 7-stage production-grade RAG pipeline over dense Infosys business documents. Every answer is grounded in the source corpus with page-level citations.</div>
+    <div class="desc">A 7-stage RAG pipeline over dense Infosys business documents. The model answers only from retrieved context, and each answer lists the document pages it cites.</div>
   </div>
   <div class="layout">
     <aside>
       <span class="sec-label">Indexed Corpus</span>
       <div class="corpus-card">
-        <div class="corpus-name">Infosys Annual Report FY2026</div>
-        <div class="corpus-type">Annual Report · ~350 pages</div>
-        <div class="corpus-coverage">Revenue, strategy, business segments, Cobalt cloud, headcount, ESG</div>
+        <div class="corpus-name">Infosys Integrated Annual Report 2025-26</div>
+        <div class="corpus-type">Annual Report · 383 pages</div>
+        <div class="corpus-coverage">Financials, business segments, geography, strategy, workforce</div>
       </div>
       <div class="corpus-card">
         <div class="corpus-name">Infosys AGM Transcript 2026</div>
-        <div class="corpus-type">Earnings Call Transcript · ~30 pages</div>
-        <div class="corpus-coverage">CEO commentary, analyst Q&A, AI strategy, FY27 guidance</div>
+        <div class="corpus-type">AGM Transcript · 50 pages</div>
+        <div class="corpus-coverage">Management remarks and shareholder Q&amp;A</div>
       </div>
+      <div class="corpus-card">
+        <div class="corpus-name">Additional Information 2025-26</div>
+        <div class="corpus-type">Supplementary Report · 8 pages</div>
+        <div class="corpus-coverage">Multi-year financial and operating summary</div>
+      </div>
+      <div class="corpus-card">
+        <div class="corpus-name">CSR Projects 2025-26</div>
+        <div class="corpus-type">CSR Report · 4 pages</div>
+        <div class="corpus-coverage">Corporate social responsibility projects</div>
+      </div>
+      <div class="corpus-coverage" style="margin-top:6px;">444 pages of text · 3,439 chunks</div>
       <hr class="side-hr">
       <span class="sec-label">Pipeline</span>
       <div id="pipeline-steps"></div>
@@ -142,7 +169,7 @@ HTML = """<!DOCTYPE html>
   </div>
 </div>
 <script>
-const PIPELINE_STEPS = ["HyDE — hypothetical answer generation","Dense retrieval — ChromaDB + MiniLM-L6","BM25 sparse retrieval","RRF fusion","Cross-encoder reranking","Deduplication","Groq LLM generation"];
+const PIPELINE_STEPS = ["HyDE — hypothetical answer generation","Dense retrieval — ChromaDB + MiniLM-L6","BM25 sparse retrieval","RRF fusion","Cross-encoder reranking","Page-level deduplication","Groq LLM generation"];
 const EXAMPLES = ["What is Infosys Cobalt?","What was Infosys's total revenue in FY26?","What is Infosys's largest business segment by revenue?","How many employees does Infosys have globally?","What did the CEO say about AI strategy at the AGM?","What is the North America revenue for Infosys in FY26?"];
 const stepsEl = document.getElementById("pipeline-steps");
 PIPELINE_STEPS.forEach((s,i) => { stepsEl.innerHTML += `<div class="pipeline-step"><span class="step-num">${i+1}</span>${s}</div>`; });
@@ -159,16 +186,23 @@ async function ask() {
   document.getElementById("sources-text").textContent = "";
   try {
     const res = await fetch("/query", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({question: q}) });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = (typeof data.detail === "string") ? data.detail : ("Request failed with status " + res.status + ".");
+      document.getElementById("answer-text").style.color = "#f08a8a";
+      document.getElementById("answer-text").textContent = "Error: " + msg;
+      document.getElementById("sources-text").textContent = "";
+      return;
+    }
     document.getElementById("answer-text").style.color = "#e4e4f0";
     document.getElementById("answer-text").textContent = data.answer || "No answer returned.";
     const srcs = data.sources || [];
     if (srcs.length > 0) {
       document.getElementById("sources-text").innerHTML = srcs.map(s => `<div class="source-item"><strong>[${s.source_num}]</strong> <code>${s.file_name}</code> — Page <strong>${s.page_number}</strong></div>`).join("");
-    } else { document.getElementById("sources-text").textContent = "No sources returned."; }
+    } else { document.getElementById("sources-text").textContent = "No sources cited."; }
   } catch(err) {
-    document.getElementById("answer-text").style.color = "#e4e4f0";
-    document.getElementById("answer-text").textContent = "Error: " + err.message;
+    document.getElementById("answer-text").style.color = "#f08a8a";
+    document.getElementById("answer-text").textContent = "Error: could not reach the server (" + err.message + ").";
   } finally { btn.disabled=false; spinner.style.display="none"; }
 }
 document.getElementById("question").addEventListener("keydown", e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask();} });

@@ -5,7 +5,7 @@ services:
     # Build the image from the Dockerfile in the current directory.
     build: .
 
-    # Override the Dockerfile default CMD (which runs app.py on 7860 for HF Spaces).
+    # Override the Dockerfile default CMD (which runs the demo UI, app.py).
     # docker-compose runs the production JSON API instead.
     command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 
@@ -25,8 +25,8 @@ services:
     volumes:
       # ChromaDB vector store — overrides the baked-in copy for local dev.
       # Re-ingest on the host and the container picks it up without a rebuild.
-      # On HF Spaces there is no volume mount; the baked-in copy (from COPY in
-      # Dockerfile) is used instead.
+      # On hosted deployments there is no volume mount; the baked-in copy (from
+      # COPY in Dockerfile) is used instead.
       - ./chroma_db:/app/chroma_db
 
       # Evaluation outputs and ground truth.

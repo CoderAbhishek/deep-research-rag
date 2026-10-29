@@ -30,12 +30,13 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY src/ ./src/
 
 # ── Portfolio demo UI ─────────────────────────────────────────────────────────
-# app.py is the browser-accessible demo that Hugging Face Spaces serves.
+# app.py is the browser-accessible demo UI.
 # It is separate from the production API in src/api/main.py.
 COPY app.py .
 
 # ── ChromaDB vector store ─────────────────────────────────────────────────────
-# Bake the pre-populated ChromaDB into the image so HF Spaces has it at runtime.
+# Bake the pre-populated ChromaDB into the image so hosted deployments have it
+# at runtime without a volume mount.
 # rag_pipeline.py reads from ./chroma_db (CHROMA_PATH constant).
 # For local Docker use, docker-compose.yml mounts ./chroma_db:/app/chroma_db
 # over this, so re-ingestion on the host is picked up without rebuilding.
@@ -43,12 +44,12 @@ COPY chroma_db/ ./chroma_db/
 
 # ── Runtime port ──────────────────────────────────────────────────────────────
 # EXPOSE is documentation — it tells Docker which port the process listens on.
-# Hugging Face Spaces expects port 7860; app.py binds there.
+# app.py listens on $PORT when the hosting platform sets it, otherwise on 7860.
 # docker-compose.yml overrides CMD to run the production API on port 8000.
 EXPOSE 7860
 
 # ── Default command ───────────────────────────────────────────────────────────
-# Default: runs the portfolio demo UI on port 7860 (used by Hugging Face Spaces).
+# Default: runs the portfolio demo UI (app.py), used for hosted deployments.
 # For local production API use, docker-compose.yml overrides this with uvicorn
 # on src.api.main:app at port 8000.
 CMD ["python", "app.py"]

@@ -1,8 +1,10 @@
 # Deep Research RAG
 
-A production-grade Retrieval-Augmented Generation system for dense business and research document corpora. Designed for research analysts and strategy consultants who need evidence-grounded, cited answers across multi-document collections — annual reports, DRHPs, industry reports, expert transcripts.
+A Retrieval-Augmented Generation (RAG) system for dense business and research document corpora. Designed for research analysts and strategy consultants who need evidence-grounded, cited answers across multi-document collections — annual reports, DRHPs, industry reports, expert transcripts.
 
-**Live demo:** [deep-research-rag-production.up.railway.app](https://deep-research-rag-production.up.railway.app)
+**Current corpus:** four Infosys FY2025-26 documents (integrated annual report, AGM transcript, additional information, CSR projects): 444 pages of text, 3,439 chunks.
+
+**Live demo:** currently offline. Run it locally with the Quickstart below.
 
 ---
 
@@ -10,7 +12,7 @@ A production-grade Retrieval-Augmented Generation system for dense business and 
 
 Analysts spend hours manually reading documents to locate specific data points, cross-reference claims across sources, and build evidence-grounded views. Keyword search (Ctrl+F) is shallow. A basic chatbot is unreliable — it hallucinates and cannot cite sources.
 
-This system solves that with a 7-stage pipeline that retrieves the most relevant context before generating an answer, and cites every claim to a specific source document and page number.
+This system solves that with a 7-stage pipeline that retrieves the most relevant context before generating an answer. The model is instructed to cite each claim to a source document and page, and the response lists only the sources the answer actually cites.
 
 ---
 
@@ -53,15 +55,15 @@ User Query
                 │
                 ▼
 ┌─────────────────────────────────────┐
-│  Stage 6: Deduplication             │
-│  Remove near-duplicate chunks       │
-│  before passing to generation       │
+│  Stage 6: Page-level deduplication  │
+│  Keep the highest-scoring chunk     │
+│  per page before generation         │
 └───────────────┬─────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────┐
 │  Stage 7: LLM Generation            │
-│  Groq compound-beta-mini            │
+│  Groq openai/gpt-oss-20b            │
 │  Grounded answer + inline citations │
 └───────────────┬─────────────────────┘
                 │
@@ -81,25 +83,31 @@ User Query
 | Dense embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Sparse retrieval | rank-bm25 |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| LLM generation | Groq API (compound-beta-mini) |
+| LLM (HyDE + generation) | Groq API (openai/gpt-oss-20b) |
 | Containerisation | Docker + Docker Compose |
-| Deployment | Railway (Dockerised, Southeast Asia region) |
-| Evaluation | Local RAGAS-equivalent metrics (no API calls) |
+| Deployment | Docker image (previously deployed on Railway; currently offline) |
+| Evaluation | Custom RAGAS-style metrics (not the `ragas` library); being rebuilt, see below |
 
 ---
 
-## Evaluation Results
+## Evaluation
 
-Evaluated on 13 ground-truth question-answer pairs across the ingested corpus.
+**Status: being rebuilt.**
 
-| Metric | Score | What it means |
-|---|---|---|
-| Context Precision | **0.991** | Retrieved chunks are almost entirely relevant |
-| Context Recall | **1.000** | Every reference sentence is covered by the retrieved context |
-| Faithfulness | 0.385 | See note below |
-| Answer Relevancy | 0.462 | Correlates with faithfulness — same root cause |
+The first evaluation used 13 hand-written questions and locally implemented RAGAS-style metrics (faithfulness, answer relevancy, context precision, context recall). A later audit found it could not support conclusions about quality:
 
-**Note on Faithfulness:** The 0.385 is a measurement artefact, not hallucination. The cross-encoder faithfulness metric penalises terse one-liner answers (produced for numerical fact queries) because short answer sentences score in a different logit range than full sentences when paired with long context paragraphs. Conceptual questions — where the model produces multi-sentence answers — all scored 1.000. Fix: modify the generation prompt to require full-sentence answers for all query types.
+- Most reference answers refer to FY2023, while the corpus covers FY2025-26, and some reference figures do not appear in the documents at all.
+- Context precision and recall compared each chunk with the reference answer using a cross-encoder and a lenient threshold. They measured topical similarity, not whether the answer was present, and scored perfect recall even on questions the system declined to answer.
+- Faithfulness scored 0 on the 8 questions where the system declined to answer, which explains the low average (0.385).
+
+A new evaluation set is in progress: 60-80 questions with page-level labels, built from observed failures and split into a development set and a held-out test set. Results will be published here.
+
+## Known Limitations
+
+- **Tables and charts:** PDF text extraction flattens tables, so column headings can end up separated from their numbers. Numeric questions over tables are the weakest area.
+- **Reranker domain:** the cross-encoder (`ms-marco-MiniLM-L-6-v2`) was trained on web-search data, not financial reports, and can over-rank pages dense with matching terms (for example, a page listing office locations for a geography question).
+- **Output checks:** grounding and citation rules are enforced through the system prompt. Answers are not yet validated against the source text in code.
+- **Access:** no authentication or rate limiting. This is a portfolio project, not a hardened service.
 
 ---
 
@@ -109,13 +117,12 @@ Evaluated on 13 ground-truth question-answer pairs across the ingested corpus.
 deep-research-rag/
 ├── app.py               # Portfolio demo UI (FastAPI + dark-mode HTML, port 7860)
 ├── src/
-│   ├── ingestion/       # PDF parsing, chunking, embedding, ChromaDB ingest
-│   ├── retrieval/       # Dense retriever, BM25 retriever, RRF fusion
-│   ├── reranking/       # Cross-encoder reranker
-│   ├── generation/      # HyDE, LLM generation, citation extraction
-│   ├── pipeline/        # Full 7-stage pipeline orchestration
-│   ├── evaluation/      # Local RAGAS-equivalent metrics
-│   └── api/             # FastAPI application
+│   ├── ingestion/       # loader.py (PDF parsing), chunker.py, embedder.py (ChromaDB ingest)
+│   ├── retrieval/       # dense.py, sparse.py (BM25), hybrid.py (RRF), query.py (HyDE), reranker.py
+│   ├── generation/      # generator.py (grounded answer + citation parsing)
+│   ├── pipeline/        # rag_pipeline.py (7-stage orchestration)
+│   ├── evaluation/      # evaluator.py (local RAGAS-style metrics)
+│   └── api/             # main.py (FastAPI application)
 ├── chroma_db/           # Pre-populated vector store (committed to repo)
 ├── data/
 │   └── ground_truth.json
@@ -131,7 +138,7 @@ deep-research-rag/
 The fastest way to run the system locally:
 
 ```bash
-# 1. Clone and install
+# 1. Clone and install (Python 3.11)
 git clone https://github.com/CoderAbhishek/deep-research-rag.git
 cd deep-research-rag
 pip install -r requirements.txt
@@ -210,15 +217,21 @@ Runs the full 7-stage pipeline.
 **Response:**
 ```json
 {
-  "answer": "Infosys Cobalt is a set of services, solutions and platforms...",
+  "answer": "Infosys Cobalt is a set of services, solutions and platforms... [SOURCE 1]",
   "sources": [
     {"source_num": 1, "file_name": "infosys-ar-26.pdf", "page_number": 22}
   ],
+  "retrieved_sources": [
+    {"source_num": 1, "file_name": "infosys-ar-26.pdf", "page_number": 22},
+    {"source_num": 2, "file_name": "agm-2026-transcript.pdf", "page_number": 12}
+  ],
   "query": "What is Infosys Cobalt?",
   "num_chunks": 4,
-  "model": "compound-beta-mini"
+  "model": "openai/gpt-oss-20b"
 }
 ```
+
+`sources` lists only the sources the answer cites (empty if the system declines to answer). `retrieved_sources` lists every chunk passed to the model. The `verbose` request field is reserved and currently has no effect.
 
 **Errors:**
 - `422` — empty or missing `question` field

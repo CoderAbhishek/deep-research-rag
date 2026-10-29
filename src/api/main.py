@@ -22,7 +22,7 @@ load_dotenv()
 class QueryRequest(BaseModel):
     """Incoming request body for POST /query."""
     question: str = Field(..., min_length=1, description="Research question to answer")
-    verbose: bool = Field(False, description="Include pipeline debug info in response")
+    verbose: bool = Field(False, description="Reserved for pipeline debug output (not implemented yet; has no effect)")
 
 
 class SourceRef(BaseModel):
@@ -35,7 +35,8 @@ class SourceRef(BaseModel):
 class QueryResponse(BaseModel):
     """Structured response returned by POST /query."""
     answer: str
-    sources: List[SourceRef]
+    sources: List[SourceRef] = Field(description="Sources the answer actually cites (empty if it cites none)")
+    retrieved_sources: List[SourceRef] = Field(default_factory=list, description="Every chunk passed to the model")
     query: str
     num_chunks: int
     model: str
@@ -101,6 +102,7 @@ def query(request: QueryRequest) -> QueryResponse:
     return QueryResponse(
         answer=result["answer"],
         sources=[SourceRef(**s) for s in result["sources"]],
+        retrieved_sources=[SourceRef(**s) for s in result.get("retrieved_sources", [])],
         query=result["query"],
         num_chunks=result["num_chunks"],
         model=result["model"],

@@ -166,9 +166,13 @@ def stage_dedup(reranked: list) -> list:
     chunks with different CE scores). Keep only the highest-CE chunk
     per unique (file_name, page_number) pair.
 
-    Session 8 finding: Page 80 appeared at pool positions 4 (CE +0.818)
-    and 12 (CE -1.995). Without deduplication, both compete for top-5 slots.
-    With deduplication, only the table chunk (CE +0.818) survives.
+    Motivation (Session 8): two chunks from page 80 appeared in the same
+    20-candidate pool with very different cross-encoder scores (+0.818 and
+    -1.995). Deduplication guarantees one page cannot take two slots.
+
+    Note: this runs on the already-truncated top-5 list, so when it removes
+    a duplicate the generator receives fewer than 5 chunks. In the recorded
+    test runs it removed nothing.
     """
     return deduplicate_by_page(reranked)
 
@@ -208,9 +212,10 @@ def run_pipeline(
         pool_size:      Candidates to retrieve from dense and BM25 each.
                         Both systems are called with n_results=pool_size,
                         then the results are fused. Default 20.
-        top_k_rerank:   Candidates from the RRF pool to pass to the
-                        cross-encoder. Cross-encoder sees top_k_rerank
-                        (query, chunk) pairs. Default 5.
+        top_k_rerank:   How many candidates to keep after reranking.
+                        The cross-encoder scores every candidate in the
+                        RRF pool (pool_size pairs) and keeps the best
+                        top_k_rerank. Default 5.
         top_k_generate: Chunks to pass to the LLM after deduplication.
                         Typically ≤ top_k_rerank. Default 5.
         verbose:        If True, print stage-by-stage progress to stdout.
@@ -218,7 +223,8 @@ def run_pipeline(
     Returns:
         Dict with:
             'answer'           — the generated answer string
-            'sources'          — list of {source_num, file_name, page_number}
+            'sources'          — sources the answer cites: {source_num, file_name, page_number}
+            'retrieved_sources'— every chunk passed to the generator
             'query'            — the original query
             'num_chunks'       — chunks in the generation context
             'model'            — LLM used for generation

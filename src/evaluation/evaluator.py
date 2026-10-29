@@ -1,8 +1,15 @@
 """
-Local RAGAS-equivalent evaluation for the Deep Research RAG pipeline.
+Local RAGAS-style evaluation for the Deep Research RAG pipeline.
 
-Computes all four metrics using models already loaded in the pipeline.
-Zero external API calls during the scoring phase.
+These are custom implementations of the four RAGAS metric ideas. The
+`ragas` library itself is NOT used. Scoring uses models already loaded in
+the pipeline, with zero external API calls during the scoring phase.
+
+Known limitation: context precision and context recall score the reference
+answer against each chunk with the cross-encoder and a permissive threshold
+(-1.0). They measure topical relevance, not whether a chunk contains the
+answer, so they should not be read as retrieval accuracy. Page-labelled
+retrieval metrics are planned to replace them.
 
 Metric implementations:
   Faithfulness      — cross-encoder: is each answer sentence entailed by context?
