@@ -1,0 +1,1104 @@
+{
+  "baseline_runs": [
+    "20261030-154958_dev__rescored_v2.2",
+    "20261030-162610_dev__rescored_v2.2",
+    "20261030-165023_dev",
+    "20261030-170601_dev"
+  ],
+  "candidate_runs": [],
+  "question_set_versions": [
+    "v2.2"
+  ],
+  "per_question": [
+    {
+      "id": "q02",
+      "question": "What was Infosys's revenue in US dollars for fiscal 2026?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "rerank",
+        "fusion",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q03",
+      "question": "What was Infosys's net profit for FY26?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "rerank",
+        "rerank",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q04",
+      "question": "How much revenue did Infosys earn from North America in FY2026?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "generation",
+        "generation",
+        "generation",
+        "generation"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q09",
+      "question": "What is Infosys's largest business segment by revenue?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q10",
+      "question": "What was Infosys's adjusted operating margin for fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q11",
+      "question": "What was Infosys's free cash flow in FY26?",
+      "status": "unstable",
+      "baseline": [
+        true,
+        false,
+        true,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "rerank",
+        "ok",
+        "generation"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q13",
+      "question": "What total dividend per share did Infosys declare for fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q14",
+      "question": "How large was the share buyback Infosys completed, and at what price per share?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q15",
+      "question": "What was Infosys's large deal TCV in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q17",
+      "question": "How many US$50 million+ clients did Infosys have in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q18",
+      "question": "How many employees did Infosys have at the end of fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q19",
+      "question": "How many people work at Infosys?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q21",
+      "question": "What was Infosys's return on equity in fiscal 2026?",
+      "status": "unstable",
+      "baseline": [
+        false,
+        true,
+        false,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "fusion",
+        "ok",
+        "generation",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q22",
+      "question": "What was Infosys's basic earnings per share for FY2026?",
+      "status": "unstable",
+      "baseline": [
+        true,
+        true,
+        false,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "generation",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q23",
+      "question": "What is Infosys Cobalt?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q25",
+      "question": "How does Infosys classify its services?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "not_retrieved",
+        "not_retrieved",
+        "not_retrieved",
+        "not_retrieved"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q26",
+      "question": "Who is the CEO of Infosys?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q28",
+      "question": "Who was appointed Vice Chairman of Infosys, and from what date?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q31",
+      "question": "How much did Infosys spend on CSR globally in fiscal 2026?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "rerank",
+        "rerank",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q32",
+      "question": "Which Infosys CSR project focuses on lakes, and in which state is it carried out?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "not_retrieved",
+        "not_retrieved",
+        "not_retrieved",
+        "not_retrieved"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q36",
+      "question": "What share of Infosys's revenue comes from exports?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q38",
+      "question": "What was TCS's revenue in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "n/a",
+        "n/a",
+        "n/a",
+        "n/a"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q39",
+      "question": "Why did Infosys's revenue fall by 20% in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "generation",
+        "generation",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q41",
+      "question": "What is the capital of France?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "n/a",
+        "n/a",
+        "n/a",
+        "n/a"
+      ],
+      "candidate_lost_at": []
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "Behaviour accuracy",
+      "column": "behaviour_ok",
+      "n_questions": 24,
+      "baseline": [
+        0.7083333333333334,
+        0.7083333333333334,
+        0.6666666666666666,
+        0.7083333333333334
+      ],
+      "baseline_mean": 0.6979166666666667,
+      "baseline_spread": 0.04166666666666674,
+      "flips_baseline": 0.125,
+      "flips_candidate": null,
+      "noise_floor": 0.125,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Answer accuracy (answerable)",
+      "column": "answer_ok",
+      "n_questions": 21,
+      "baseline": [
+        0.6666666666666666,
+        0.6666666666666666,
+        0.6190476190476191,
+        0.6666666666666666
+      ],
+      "baseline_mean": 0.6547619047619048,
+      "baseline_spread": 0.04761904761904756,
+      "flips_baseline": 0.14285714285714285,
+      "flips_candidate": null,
+      "noise_floor": 0.14285714285714285,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "False refusal rate",
+      "column": "refused",
+      "n_questions": 21,
+      "baseline": [
+        0.23809523809523808,
+        0.23809523809523808,
+        0.23809523809523808,
+        0.23809523809523808
+      ],
+      "baseline_mean": 0.23809523809523808,
+      "baseline_spread": 0.0,
+      "flips_baseline": 0.09523809523809523,
+      "flips_candidate": null,
+      "noise_floor": 0.09523809523809523,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Correct refusal rate",
+      "column": "refused",
+      "n_questions": 2,
+      "baseline": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "baseline_mean": 1.0,
+      "baseline_spread": 0.0,
+      "flips_baseline": 0.0,
+      "flips_candidate": null,
+      "noise_floor": 0.5,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@20 dense",
+      "column": "dense_hit20",
+      "n_questions": 22,
+      "baseline": [
+        0.7272727272727273,
+        0.7272727272727273,
+        0.6818181818181818,
+        0.6818181818181818
+      ],
+      "baseline_mean": 0.7045454545454545,
+      "baseline_spread": 0.045454545454545525,
+      "flips_baseline": 0.09090909090909091,
+      "flips_candidate": null,
+      "noise_floor": 0.09090909090909091,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@20 BM25",
+      "column": "bm25_hit20",
+      "n_questions": 22,
+      "baseline": [
+        0.6363636363636364,
+        0.6363636363636364,
+        0.6363636363636364,
+        0.6363636363636364
+      ],
+      "baseline_mean": 0.6363636363636364,
+      "baseline_spread": 0.0,
+      "flips_baseline": 0.0,
+      "flips_candidate": null,
+      "noise_floor": 0.045454545454545456,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@20 RRF",
+      "column": "rrf_hit20",
+      "n_questions": 22,
+      "baseline": [
+        0.8636363636363636,
+        0.9090909090909091,
+        0.8636363636363636,
+        0.9090909090909091
+      ],
+      "baseline_mean": 0.8863636363636364,
+      "baseline_spread": 0.045454545454545414,
+      "flips_baseline": 0.09090909090909091,
+      "flips_candidate": null,
+      "noise_floor": 0.09090909090909091,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@5 RRF",
+      "column": "rrf_hit5",
+      "n_questions": 22,
+      "baseline": [
+        0.6363636363636364,
+        0.5909090909090909,
+        0.6818181818181818,
+        0.7272727272727273
+      ],
+      "baseline_mean": 0.6590909090909092,
+      "baseline_spread": 0.13636363636363635,
+      "flips_baseline": 0.36363636363636365,
+      "flips_candidate": null,
+      "noise_floor": 0.36363636363636365,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@5 rerank",
+      "column": "rerank_hit5",
+      "n_questions": 22,
+      "baseline": [
+        0.6818181818181818,
+        0.7272727272727273,
+        0.7727272727272727,
+        0.7272727272727273
+      ],
+      "baseline_mean": 0.7272727272727273,
+      "baseline_spread": 0.09090909090909094,
+      "flips_baseline": 0.13636363636363635,
+      "flips_candidate": null,
+      "noise_floor": 0.13636363636363635,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@5 final",
+      "column": "final_hit5",
+      "n_questions": 22,
+      "baseline": [
+        0.6818181818181818,
+        0.7272727272727273,
+        0.8181818181818182,
+        0.8181818181818182
+      ],
+      "baseline_mean": 0.7613636363636365,
+      "baseline_spread": 0.13636363636363646,
+      "flips_baseline": 0.18181818181818182,
+      "flips_candidate": null,
+      "noise_floor": 0.18181818181818182,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "MRR@5 RRF",
+      "column": "rrf_rr5",
+      "n_questions": 22,
+      "baseline": [
+        0.4249999999999999,
+        0.3098484848484848,
+        0.3303030303030303,
+        0.378030303030303
+      ],
+      "baseline_mean": 0.3607954545454545,
+      "baseline_spread": 0.11515151515151506,
+      "flips_baseline": 0.28712121212121217,
+      "flips_candidate": null,
+      "noise_floor": 0.28712121212121217,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "MRR@5 rerank",
+      "column": "rerank_rr5",
+      "n_questions": 22,
+      "baseline": [
+        0.5378787878787878,
+        0.5257575757575758,
+        0.6022727272727273,
+        0.5151515151515151
+      ],
+      "baseline_mean": 0.5452651515151514,
+      "baseline_spread": 0.08712121212121215,
+      "flips_baseline": 0.13484848484848486,
+      "flips_candidate": null,
+      "noise_floor": 0.13484848484848486,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Citation precision",
+      "column": "citation_precision",
+      "n_questions": 15,
+      "baseline": [
+        0.6,
+        0.6666666666666666,
+        0.5,
+        0.5666666666666667
+      ],
+      "baseline_mean": 0.5833333333333333,
+      "baseline_spread": 0.16666666666666663,
+      "flips_baseline": 0.2,
+      "flips_candidate": null,
+      "noise_floor": 0.2,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "HyDE cut off (count)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "baseline_mean": 0.0,
+      "baseline_spread": 0,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 0,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Generation cut off (count)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "baseline_mean": 0.0,
+      "baseline_spread": 0,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 0,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "HyDE fallback used (count)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "baseline_mean": 0.0,
+      "baseline_spread": 0,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 0,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Questions with < 5 chunks to the model",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        7,
+        8,
+        0,
+        0
+      ],
+      "baseline_mean": 3.75,
+      "baseline_spread": 8,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 8,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Latency p50 (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        1.894,
+        1.869,
+        2.381,
+        2.309
+      ],
+      "baseline_mean": 2.11325,
+      "baseline_spread": 0.5119999999999998,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 0.5119999999999998,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Latency p95 (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        2.631,
+        3.154,
+        3.136,
+        3.025
+      ],
+      "baseline_mean": 2.9865,
+      "baseline_spread": 0.5230000000000001,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 0.5230000000000001,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Tokens per question",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        1472.875,
+        1463.25,
+        1506.5833,
+        1503.7917
+      ],
+      "baseline_mean": 1486.625,
+      "baseline_spread": 43.33330000000001,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 43.33330000000001,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Cost per run (USD)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        0.00404,
+        0.004032,
+        0.004082,
+        0.004069
+      ],
+      "baseline_mean": 0.0040557499999999995,
+      "baseline_spread": 4.99999999999997e-05,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": 4.99999999999997e-05,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 HyDE stage (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 HyDE LLM call (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 dense (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 BM25 (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 rerank (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 dedup (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 generation stage (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 generation LLM call (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "p50 outside LLM calls (s)",
+      "column": null,
+      "n_questions": null,
+      "baseline": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "baseline_mean": null,
+      "baseline_spread": null,
+      "flips_baseline": null,
+      "flips_candidate": null,
+      "noise_floor": null,
+      "moves": null,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    }
+  ],
+  "controls": [],
+  "regression_failures": []
+}

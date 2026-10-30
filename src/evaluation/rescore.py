@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from src.evaluation import metrics_v2 as m
-from src.evaluation.eval_v2 import GROUP, question_set_version, summarise, write_outputs
+from src.evaluation.eval_v2 import GROUP, TIMING_COLUMNS, question_set_version, summarise, write_outputs
 from src.observability.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ def rescore_row(row: Dict[str, str], q: Dict[str, Any], version: str) -> Dict[st
     out["group"] = GROUP.get(q["question_type"], "other")
     for k in ("latency_s", "total_tokens", "cost_usd", "citation_precision", "dedup_removed",
               "dense_bm25_overlap", "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars",
-              "generation_completion_tokens", "generation_reasoning_chars"):
+              "generation_completion_tokens", "generation_reasoning_chars", *TIMING_COLUMNS):
         out[k] = parse_num(row.get(k))
     if row.get("error"):
         out["behaviour_ok"] = False

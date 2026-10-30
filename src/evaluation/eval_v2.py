@@ -21,6 +21,8 @@ results.csv   one row per question:
                 - where the relevant page was found or lost, stage by stage
                   (dense / BM25 / RRF / rerank / final context)
                 - citations, latency, tokens, cost, request_id, trace_id
+                - time per stage and per LLM call (DR-37), so a latency change
+                  can be attributed to a stage or to the LLM provider
                 - EMPTY review columns for error analysis:
                   review_pass, review_note, failure_category
 summary.json  run configuration (git commit, models, pool sizes) and
@@ -53,6 +55,14 @@ GROUP = {"number": "numeric", "percentage": "numeric", "table_lookup": "numeric"
          "unanswerable": "decline", "out_of_scope": "decline", "false_premise": "decline",
          "adversarial": "decline", "off_topic": "decline"}
 
+# Time per pipeline stage (from debug["timings_s"]), time inside each LLM API
+# call, and local_s = total minus LLM calls (our own code: retrieval, rerank,
+# dedup, prompt building). Added for DR-37: change B's +0.46 s p50 could not be
+# attributed because only the total was saved.
+STAGE_TIMINGS = ["hyde_s", "dense_s", "bm25_s", "rrf_s", "rerank_s", "dedup_s", "generate_s"]
+LLM_TIMINGS = ["hyde_llm_s", "generation_llm_s"]
+TIMING_COLUMNS = STAGE_TIMINGS + LLM_TIMINGS + ["local_s"]
+
 CSV_COLUMNS = [
     "id", "split", "question_set_version", "group", "question_type", "difficulty", "phrasing", "expected_behavior",
     "question", "reference_answer", "answer",
@@ -64,7 +74,7 @@ CSV_COLUMNS = [
     "dense_pages", "bm25_pages", "rrf_pages", "rerank_pages",
     "rrf_chunks", "rerank_chunks", "final_chunks", "generation_chunks", "dedup_removed_pool",
     "dedup_removed", "dense_bm25_overlap",
-    "latency_s", "total_tokens", "cost_usd", "hyde_finish_reason", "generation_finish_reason",
+    "latency_s", *TIMING_COLUMNS, "total_tokens", "cost_usd", "hyde_finish_reason", "generation_finish_reason",
     "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars", "hyde_fallback",
     "generation_completion_tokens", "generation_reasoning_chars",
     "error", "request_id", "trace_id",
@@ -180,6 +190,10 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "dedup_removed": debug["counts"]["dedup_removed"],
         "dense_bm25_overlap": debug["counts"]["dense_bm25_overlap"],
         "latency_s": debug["timings_s"]["total_s"],
+        **{k: debug["timings_s"].get(k) for k in STAGE_TIMINGS},
+        "hyde_llm_s": hyde_llm.get("latency_s"),
+        "generation_llm_s": gen_llm.get("latency_s"),
+        "local_s": _local_s(debug["timings_s"].get("total_s"), hyde_llm.get("latency_s"), gen_llm.get("latency_s")),
         "total_tokens": debug["total_tokens"],
         "cost_usd": debug["total_cost_usd"],
         "hyde_finish_reason": hyde_llm.get("finish_reason"),
@@ -205,6 +219,13 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "trace_id": result.get("trace_id") or "",
     })
     return row
+
+
+def _local_s(total: Optional[float], *llm_calls: Optional[float]) -> Optional[float]:
+    """Pipeline time spent outside the LLM API calls; None if any part is unknown."""
+    if total is None or any(v is None for v in llm_calls):
+        return None
+    return round(total - sum(llm_calls), 3)
 
 
 def _chunks_sent(r: Dict[str, Any]) -> Optional[float]:
@@ -247,6 +268,7 @@ def summarise(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "citation_precision": m.mean(r["citation_precision"] for r in ok),
         "latency_s": {"p50": m.percentile([r["latency_s"] for r in ok], 50),
                       "p95": m.percentile([r["latency_s"] for r in ok], 95)},
+        "timings_p50_s": {k: m.percentile([r.get(k) for r in ok], 50) for k in TIMING_COLUMNS},
         "tokens_mean": m.mean(r["total_tokens"] for r in ok),
         "hyde_cut_off": sum(1 for r in ok if r.get("hyde_finish_reason") == "length"),
         "generation_cut_off": sum(1 for r in ok if r.get("generation_finish_reason") == "length"),
@@ -298,6 +320,7 @@ def log_summary(s: Dict[str, Any]) -> None:
                 o["hyde_cut_off"], o["generation_cut_off"], o["hyde_fallback"])
     logger.info("  latency p50/p95 %s s   tokens/question %s   total cost USD %s",
                 (o["latency_s"]["p50"], o["latency_s"]["p95"]), o["tokens_mean"], o["cost_usd_total"])
+    logger.info("  p50 seconds per stage / call: %s", o["timings_p50_s"])
     for g, gs in s["by_group"].items():
         logger.info("  [%s] n=%d behaviour=%s answer=%s rerank_hit5=%s", g, gs["questions"],
                     gs["behaviour_accuracy"], gs["answer_accuracy_answerable"], gs["retrieval"]["hit@5"]["rerank"])
