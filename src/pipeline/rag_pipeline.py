@@ -182,9 +182,14 @@ def stage_dedup(reranked: list) -> list:
     20-candidate pool with very different cross-encoder scores (+0.818 and
     -1.995). Deduplication guarantees one page cannot take two slots.
 
-    Note: this runs on the already-truncated top-5 list, so when it removes
-    a duplicate the generator receives fewer than 5 chunks. In the recorded
-    test runs it removed nothing.
+    Change B (DR-10): this now runs on the FULL reranked list (every RRF
+    candidate, sorted by cross-encoder score) and the top-k is taken AFTER
+    deduplication. Before, it ran on the already-truncated top 5, so each
+    duplicate removed left the generator with fewer than 5 chunks (7 of 24
+    baseline questions got 3 or 4).
+
+    Unchanged: the highest-scoring chunk of a page wins. A page whose best
+    answer sits in a lower-scoring chunk still loses that chunk.
     """
     return deduplicate_by_page(reranked)
 
@@ -228,10 +233,11 @@ def run_pipeline(
         pool_size:      Candidates to retrieve from dense and BM25 each.
                         Both systems are called with n_results=pool_size,
                         then the results are fused. Default 20.
-        top_k_rerank:   How many candidates to keep after reranking.
+        top_k_rerank:   How many unique pages to keep after reranking.
                         The cross-encoder scores every candidate in the
-                        RRF pool (pool_size pairs) and keeps the best
-                        top_k_rerank. Default 5.
+                        RRF pool (pool_size pairs); duplicates of a page
+                        are removed from that full ranked list; then the
+                        best top_k_rerank unique pages are kept. Default 5.
         top_k_generate: Chunks to pass to the LLM after deduplication.
                         Typically ≤ top_k_rerank. Default 5.
 
@@ -314,29 +320,37 @@ def run_pipeline(
     for c in rrf_pool:
         logger.debug("  RRF    #%-2d %-40s rrf=%.5f", c["rank"], _cite(c), c["rrf_score"])
 
-    # Stage 5 - Cross-encoder reranking (scores every pool candidate)
+    # Stage 5 - Cross-encoder reranking. Every pool candidate is scored (as
+    # before) and now ALL of them are kept, sorted by score, so that
+    # deduplication can run before the cut to top_k_rerank (change B, DR-10).
+    # No extra cost: the cross-encoder already scored all pool_size pairs.
     t0 = time.perf_counter()
-    reranked = stage_rerank(
+    reranked_all = stage_rerank(
         query,
         rrf_pool,
         resources["reranker"],
-        n_results=top_k_rerank,
+        n_results=len(rrf_pool),
     )
     timings["rerank_s"] = time.perf_counter() - t0
-    # Snapshot now: deduplication renumbers 'rank' on these same dicts.
-    reranked_summary = [_chunk_summary(c, "rerank_score") for c in reranked]
-    top_score = reranked[0]["rerank_score"] if reranked else float("nan")
-    logger.info("[5/7] Rerank: scored %d pairs, kept %d (top score %.3f) in %.2fs",
-                len(rrf_pool), len(reranked), top_score, timings["rerank_s"])
-    for c in reranked:
+    # Snapshots now: deduplication renumbers 'rank' on these same dicts.
+    reranked_all_summary = [_chunk_summary(c, "rerank_score") for c in reranked_all]
+    reranked_summary = reranked_all_summary[:top_k_rerank]  # top 5 by score, before dedup
+    duplicates_in_top = len(reranked_summary) - len({(c["file_name"], c["page_number"]) for c in reranked_summary})
+    top_score = reranked_all[0]["rerank_score"] if reranked_all else float("nan")
+    logger.info("[5/7] Rerank: scored %d pairs (top score %.3f) in %.2fs",
+                len(rrf_pool), top_score, timings["rerank_s"])
+    for c in reranked_all:
         logger.debug("  Rerank #%-2d %-40s ce=%+.3f", c["rank"], _cite(c), c["rerank_score"])
 
-    # Stage 6 - Page-level deduplication
+    # Stage 6 - Page-level deduplication over the full ranked list, THEN cut
     t0 = time.perf_counter()
-    deduped = stage_dedup(reranked)
+    deduped_all = stage_dedup(reranked_all)
+    deduped = deduped_all[:top_k_rerank]
     timings["dedup_s"] = time.perf_counter() - t0
-    removed = len(reranked) - len(deduped)
-    logger.info("[6/7] Dedup: %d unique pages (%d duplicate chunks removed)", len(deduped), removed)
+    removed = len(reranked_all) - len(deduped_all)
+    logger.info("[6/7] Dedup: kept top %d unique pages (%d duplicate chunks removed from %d; "
+                "%d of them would have cut the old top %d)",
+                len(deduped), removed, len(reranked_all), duplicates_in_top, top_k_rerank)
 
     # Stage 7 - LLM generation
     generation_chunks = deduped[:top_k_generate]
@@ -362,7 +376,7 @@ def run_pipeline(
     result["contexts"]          = [c["text"] for c in generation_chunks]   # Session 10
     result["hyde_passage"]      = hyde_passage
     result["rrf_pool_size"]     = len(rrf_pool)
-    result["reranked_count"]    = len(reranked)
+    result["reranked_count"]    = len(reranked_all)
     result["final_chunk_count"] = len(deduped)
     result["trace_id"]          = trace_id
     result["debug"] = {
@@ -375,9 +389,12 @@ def run_pipeline(
             "bm25": len(bm25_results),
             "dense_bm25_overlap": overlap,
             "rrf_pool": len(rrf_pool),
-            "reranked": len(reranked),
+            "reranked": len(reranked_all),
             "after_dedup": len(deduped),
-            "dedup_removed": removed,
+            # Same meaning as before change B: duplicates among the top 5 by
+            # score, i.e. the slots the old order would have lost.
+            "dedup_removed": duplicates_in_top,
+            "dedup_removed_pool": removed,
             "generation_chunks": len(generation_chunks),
             "cited": len(cited),
         },
@@ -385,6 +402,8 @@ def run_pipeline(
         "bm25": [_chunk_summary(c, "score") for c in bm25_results],
         "rrf_pool": [_chunk_summary(c, "rrf_score") for c in rrf_pool],
         "reranked": reranked_summary,
+        "reranked_all": reranked_all_summary,
+        "final": [_chunk_summary(c, "rerank_score") for c in generation_chunks],
         "timings_s": {k: round(v, 3) for k, v in timings.items()},
         "llm": llm_usage,
         "total_tokens": total_tokens,
