@@ -59,7 +59,7 @@ GROUP = {"number": "numeric", "percentage": "numeric", "table_lookup": "numeric"
 # call, and local_s = total minus LLM calls (our own code: retrieval, rerank,
 # dedup, prompt building). Added for DR-37: change B's +0.46 s p50 could not be
 # attributed because only the total was saved.
-STAGE_TIMINGS = ["hyde_s", "dense_s", "bm25_s", "rrf_s", "rerank_s", "dedup_s", "generate_s"]
+STAGE_TIMINGS = ["hyde_s", "dense_s", "bm25_s", "rrf_s", "rerank_s", "dedup_s", "context_s", "generate_s"]
 LLM_TIMINGS = ["hyde_llm_s", "generation_llm_s"]
 TIMING_COLUMNS = STAGE_TIMINGS + LLM_TIMINGS + ["local_s"]
 
@@ -72,7 +72,8 @@ CSV_COLUMNS = [
     "dense_rr5", "bm25_rr5", "rrf_rr5", "rerank_rr5",
     "relevant_pages", "final_pages", "cited_pages", "citation_precision", "any_citation_relevant",
     "dense_pages", "bm25_pages", "rrf_pages", "rerank_pages",
-    "rrf_chunks", "rerank_chunks", "final_chunks", "generation_chunks", "dedup_removed_pool",
+    "rrf_chunks", "rerank_chunks", "final_chunks", "context_chunks", "context_chars",
+    "generation_chunks", "dedup_removed_pool",
     "dedup_removed", "dense_bm25_overlap",
     "latency_s", *TIMING_COLUMNS, "total_tokens", "cost_usd", "hyde_finish_reason", "generation_finish_reason",
     "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars", "hyde_fallback",
@@ -108,6 +109,16 @@ def _fmt_pages(pages: List[m.PageKey]) -> str:
 def _fmt_chunks(items: List[Dict[str, Any]]) -> str:
     """Chunk-level identity in rank order: 'file pN cK; ...' (diagnoses which chunk of a page was used)."""
     return "; ".join(f"{i.get('file_name')} p{i.get('page_number')} c{i.get('chunk_index')}" for i in items)
+
+
+def _fmt_context(items: List[Dict[str, Any]]) -> str:
+    """Chunks of each page sent to the model (change F): 'file pN c0-c4; ...' or 'file pN c2' if one."""
+    out = []
+    for i in items:
+        idx = i.get("context_chunk_indices") or [i.get("chunk_index")]
+        span = f"c{idx[0]}" if len(idx) == 1 else f"c{idx[0]}-c{idx[-1]}"
+        out.append(f"{i.get('file_name')} p{i.get('page_number')} {span}")
+    return "; ".join(out)
 
 
 def _fmt_ranked(pages: List[m.PageKey]) -> str:
@@ -214,6 +225,8 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "rrf_chunks": _fmt_chunks(debug["rrf_pool"]),
         "rerank_chunks": _fmt_chunks(debug.get("reranked_all") or debug["reranked"]),
         "final_chunks": _fmt_chunks(debug.get("final", [])),
+        "context_chunks": _fmt_context(debug.get("final", [])),
+        "context_chars": debug["counts"].get("context_chars"),
         "generation_chunks": debug["counts"].get("generation_chunks"),
         "dedup_removed_pool": debug["counts"].get("dedup_removed_pool"),
         "trace_id": result.get("trace_id") or "",
@@ -270,6 +283,7 @@ def summarise(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
                       "p95": m.percentile([r["latency_s"] for r in ok], 95)},
         "timings_p50_s": {k: m.percentile([r.get(k) for r in ok], 50) for k in TIMING_COLUMNS},
         "tokens_mean": m.mean(r["total_tokens"] for r in ok),
+        "context_chars_mean": m.mean(r.get("context_chars") for r in ok),
         "hyde_cut_off": sum(1 for r in ok if r.get("hyde_finish_reason") == "length"),
         "generation_cut_off": sum(1 for r in ok if r.get("generation_finish_reason") == "length"),
         "hyde_fallback": sum(1 for r in ok if r.get("hyde_fallback") is True),
@@ -383,6 +397,7 @@ def main(argv: Optional[List[str]] = None) -> Dict[str, Any]:
             "generation_reasoning_effort": getattr(gen, "GENERATION_REASONING_EFFORT", None),
             "embed_model": rp.EMBED_MODEL, "reranker_model": rp.RERANKER_MODEL,
             "pool_size": rp.POOL_SIZE, "top_k_rerank": rp.TOP_K_RERANK, "top_k_generate": rp.TOP_K_GENERATE,
+            "page_context_chars": getattr(rp, "PAGE_CONTEXT_CHARS", 0),
         },
         "overall": summarise(rows),
         "by_group": {g: summarise([r for r in rows if r["group"] == g]) for g in groups},

@@ -102,6 +102,7 @@ SUMMARY_METRICS = [
     ("Latency p95 (s)", ("latency_s", "p95"), False),
     ("Tokens per question", ("tokens_mean",), False),
     ("Cost per run (USD)", ("cost_usd_total",), False),
+    ("Context chars per question", ("context_chars_mean",), False),
     # p50 seconds per stage and per LLM call (DR-37); "-" for runs before they were recorded.
     ("p50 HyDE stage (s)", ("timings_p50_s", "hyde_s"), False),
     ("p50 HyDE LLM call (s)", ("timings_p50_s", "hyde_llm_s"), False),
@@ -109,6 +110,7 @@ SUMMARY_METRICS = [
     ("p50 BM25 (s)", ("timings_p50_s", "bm25_s"), False),
     ("p50 rerank (s)", ("timings_p50_s", "rerank_s"), False),
     ("p50 dedup (s)", ("timings_p50_s", "dedup_s"), False),
+    ("p50 page context (s)", ("timings_p50_s", "context_s"), False),
     ("p50 generation stage (s)", ("timings_p50_s", "generate_s"), False),
     ("p50 generation LLM call (s)", ("timings_p50_s", "generation_llm_s"), False),
     ("p50 outside LLM calls (s)", ("timings_p50_s", "local_s"), False),

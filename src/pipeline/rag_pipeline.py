@@ -44,6 +44,7 @@ from src.retrieval.hybrid  import reciprocal_rank_fusion
 from src.retrieval.query   import generate_hyde_result
 from src.retrieval.reranker import load_reranker, rerank, deduplicate_by_page
 from src.generation.generator import generate_answer
+from src.generation.context import assemble_page_context, build_page_index
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,11 @@ RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 POOL_SIZE      = 20   # candidates retrieved from each system (dense, BM25)
 TOP_K_RERANK   = 5    # candidates passed to cross-encoder (from RRF pool)
 TOP_K_GENERATE = 5    # chunks passed to LLM for generation
+# Change F (DR-38): characters of page text sent per selected page: a window
+# of the page's chunks around the best one (src/generation/context.py).
+# Chosen from the page-length distribution (median page ~3,160 chars), not
+# tuned on eval results. 0 = best chunk only (behaviour before change F).
+PAGE_CONTEXT_CHARS = 2500
 
 
 def load_resources():
@@ -72,7 +78,8 @@ def load_resources():
     for every query.
 
     Returns:
-        dict with keys: 'collection', 'embed_model', 'bm25', 'chunks', 'reranker'
+        dict with keys: 'collection', 'embed_model', 'bm25', 'chunks', 'reranker',
+        'page_index' (every chunk grouped by page, for page-level context)
     """
     t_start = time.perf_counter()
     logger.info("Loading ChromaDB from %s ...", CHROMA_PATH)
@@ -94,6 +101,7 @@ def load_resources():
         "bm25":        bm25,
         "chunks":      chunks,
         "reranker":    reranker,
+        "page_index":  build_page_index(chunks),
     }
 
 
@@ -212,6 +220,7 @@ def run_pipeline(
     pool_size:      int = POOL_SIZE,
     top_k_rerank:   int = TOP_K_RERANK,
     top_k_generate: int = TOP_K_GENERATE,
+    page_context_chars: int = PAGE_CONTEXT_CHARS,
 ) -> dict:
     """
     Run the full RAG pipeline end-to-end.
@@ -240,6 +249,9 @@ def run_pipeline(
                         best top_k_rerank unique pages are kept. Default 5.
         top_k_generate: Chunks to pass to the LLM after deduplication.
                         Typically ≤ top_k_rerank. Default 5.
+        page_context_chars: Change F. For each selected page, send a window
+                        of that page's chunks around the best one, up to this
+                        many characters. 0 = the best chunk alone. Default 2500.
 
     Returns:
         Dict with:
@@ -352,8 +364,20 @@ def run_pipeline(
                 "%d of them would have cut the old top %d)",
                 len(deduped), removed, len(reranked_all), duplicates_in_top, top_k_rerank)
 
+    # Stage 6b - Page-level context (change F, DR-38): same pages, same order,
+    # wider text per page. Selection above is unchanged.
+    t0 = time.perf_counter()
+    if "page_index" not in resources:  # resources built before change F
+        resources["page_index"] = build_page_index(resources["chunks"])
+    generation_chunks = assemble_page_context(deduped[:top_k_generate], resources["page_index"],
+                                              page_context_chars)
+    timings["context_s"] = time.perf_counter() - t0
+    context_chars = sum(len(c["text"]) for c in generation_chunks)
+    logger.info("[6b] Context: %d pages, %d chars (best chunks alone: %d); chunks per page %s",
+                len(generation_chunks), context_chars, sum(len(c["text"]) for c in deduped[:top_k_generate]),
+                [c["metadata"].get("context_chunk_indices") for c in generation_chunks])
+
     # Stage 7 - LLM generation
-    generation_chunks = deduped[:top_k_generate]
     t0 = time.perf_counter()
     result = stage_generate(query, generation_chunks)
     timings["generate_s"] = time.perf_counter() - t0
@@ -396,6 +420,7 @@ def run_pipeline(
             "dedup_removed": duplicates_in_top,
             "dedup_removed_pool": removed,
             "generation_chunks": len(generation_chunks),
+            "context_chars": context_chars,
             "cited": len(cited),
         },
         "dense": [_chunk_summary(c, "score") for c in dense_results],
@@ -403,7 +428,10 @@ def run_pipeline(
         "rrf_pool": [_chunk_summary(c, "rrf_score") for c in rrf_pool],
         "reranked": reranked_summary,
         "reranked_all": reranked_all_summary,
-        "final": [_chunk_summary(c, "rerank_score") for c in generation_chunks],
+        "final": [dict(_chunk_summary(c, "rerank_score"),
+                       context_chunk_indices=c["metadata"].get("context_chunk_indices"),
+                       context_chars=c["metadata"].get("context_chars"))
+                  for c in generation_chunks],
         "timings_s": {k: round(v, 3) for k, v in timings.items()},
         "llm": llm_usage,
         "total_tokens": total_tokens,
