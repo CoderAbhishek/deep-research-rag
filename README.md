@@ -116,6 +116,16 @@ python -m src.evaluation.eval_v2 --limit 3       # quick smoke run
 python -m tests.test_metrics_v2                  # metric unit tests, no API key needed
 ```
 
+Comparing runs and fixing labels (no API calls needed):
+
+```bash
+python -m src.evaluation.rescore data/eval/runs/<run_id>          # re-score a saved run with the current labels
+python -m src.evaluation.compare_runs --baseline RUN1 RUN2 --candidate RUN3 RUN4 --name change-a \
+    --regression data/eval/regression_ids.json                    # per-question fixed / regressed report
+```
+
+Every change is run twice and compared question by question against two baseline runs: between two identical baseline runs, 7 of 24 questions flipped pass / fail, so a single before / after run cannot show whether a change helped.
+
 Each run writes `data/eval/runs/<run_id>/results.csv` (one row per question: answer checks, whether the relevant page was found at each stage, where it was lost, citations, latency, tokens, cost, trace ID, and empty columns for manual review) and `summary.json` (configuration and aggregate metrics). Metrics are deterministic: hit@k and MRR@k from page labels, answer correctness from `must_include`, correct and false refusal rates, citation precision. Baseline results will be published here after the first dev run and error analysis; the set will grow to 60-80 questions based on the failures observed.
 
 ## Known Limitations

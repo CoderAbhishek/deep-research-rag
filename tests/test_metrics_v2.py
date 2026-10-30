@@ -65,11 +65,30 @@ def test_locate_loss_walks_the_pipeline_in_order():
     base = {"dense": [(AR, 80)], "bm25": [], "rrf": [(AR, 80)], "rerank": [(AR, 80)], "final": [(AR, 80)]}
     assert m.locate_loss(base, REL, answer_ok=True, refused=False) == "ok"
     assert m.locate_loss(base, REL, answer_ok=False, refused=False) == "generation"
-    assert m.locate_loss(dict(base, final=[]), REL, True, False) == "dedup"
-    assert m.locate_loss(dict(base, rerank=[], final=[]), REL, True, False) == "rerank"
-    assert m.locate_loss(dict(base, rrf=[], rerank=[], final=[]), REL, True, False) == "fusion"
-    assert m.locate_loss({"dense": [(AR, 1)], "bm25": [(AR, 2)]}, REL, True, False) == "not_retrieved"
+    # A page lost before the final context, with a wrong answer or refusal:
+    assert m.locate_loss(dict(base, final=[]), REL, answer_ok=False, refused=True) == "dedup"
+    assert m.locate_loss(dict(base, rerank=[], final=[]), REL, False, True) == "rerank"
+    assert m.locate_loss(dict(base, rrf=[], rerank=[], final=[]), REL, False, True) == "fusion"
+    assert m.locate_loss({"dense": [(AR, 1)], "bm25": [(AR, 2)]}, REL, False, True) == "not_retrieved"
     assert m.locate_loss(base, set(), True, False) == "n/a"
+
+
+def test_correct_answer_from_unlabelled_page_is_a_label_gap():
+    # Relevant page never retrieved, yet the answer is correct: the model used a page
+    # that is missing from relevant_pages (baseline q13, q22, q26).
+    stages = {"dense": [(AR, 38)], "bm25": [], "rrf": [(AR, 38)], "rerank": [(AR, 38)], "final": [(AR, 38)]}
+    assert m.locate_loss(stages, REL, answer_ok=True, refused=False) == "ok_unlabelled_source"
+    # Same retrieval, but the answer is wrong: still a retrieval failure.
+    assert m.locate_loss(stages, REL, answer_ok=False, refused=False) == "not_retrieved"
+
+
+def test_locate_loss_from_hits_matches_and_handles_unknowns():
+    hits = {"dense": True, "bm25": False, "rrf": True, "rerank": False, "final": False}
+    assert m.locate_loss_from_hits(hits, answer_ok=False, refused=True) == "rerank"
+    assert m.locate_loss_from_hits(hits, answer_ok=True, refused=False) == "ok_unlabelled_source"
+    unknown = {"dense": None, "bm25": None, "rrf": None, "rerank": None, "final": True}
+    assert m.locate_loss_from_hits(unknown, answer_ok=True, refused=False) == "ok"
+    assert m.locate_loss_from_hits(dict(unknown, final=None), answer_ok=False, refused=True) == "unknown_stage"
 
 
 def test_mean_and_percentile():

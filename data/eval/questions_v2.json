@@ -1,5 +1,5 @@
 {
-  "version": "v2-seed",
+  "version": "v2.1",
   "created": "2026-10-30",
   "notes": "Seed set built from the FY2025-26 corpus. Every reference figure was found in the indexed chunk text (see 'verification'). must_include: every inner list must be matched by at least one of its strings (case-insensitive; commas, spaces and currency signs ignored). relevant_pages: pages known to contain the answer; any one of them counts as a hit. Split: stratified by answer group (numeric / text / decline), ~60% dev / 40% test, seed 20261030, fixed before any run. Error analysis uses the dev split only; the test split is for reporting.",
   "questions": [
@@ -368,6 +368,10 @@
         {
           "file_name": "infosys-ar-26.pdf",
           "page_number": 16
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 38
         }
       ],
       "question_type": "number",
@@ -375,16 +379,18 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AGM p7 c4: final dividend ₹25 + interim ₹23 = ₹48, 11.6% growth. AR p16: Dividend per share 48.0."
+      "verification": "AGM p7 c4: final dividend ₹25 + interim ₹23 = ₹48, 11.6% growth. AR p16: Dividend per share 48.0. v2.1: AR p38 'Total dividend 48.00' added."
     },
     {
       "id": "q14",
       "split": "dev",
       "question": "How large was the share buyback Infosys completed, and at what price per share?",
-      "reference_answer": "₹18,000 crore at ₹1,800 per share (10 crore shares bought back).",
+      "reference_answer": "₹18,000 crore at ₹1,800 per share (10 crore shares bought back). Stating the 10 crore shares at ₹1,800 is accepted as equivalent.",
       "must_include": [
         [
-          "18,000"
+          "18,000",
+          "10,00,00,000",
+          "10 crore"
         ],
         [
           "1,800"
@@ -398,6 +404,10 @@
         {
           "file_name": "additional-information-2025-26.pdf",
           "page_number": 1
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 38
         }
       ],
       "question_type": "number",
@@ -405,7 +415,7 @@
       "difficulty": "multi_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AR p16: buyback ₹18,000 cr (c2) at a price of ₹1,800 per share (c3), split across chunks; ADD p1: 10,00,00,000 shares bought back."
+      "verification": "AR p16: buyback ₹18,000 cr (c2) at a price of ₹1,800 per share (c3), split across chunks; ADD p1: 10,00,00,000 shares bought back. v2.1: AR p38 'Buyback at ₹1,800 per share ... 18,000' added; share-count form accepted."
     },
     {
       "id": "q15",
@@ -626,6 +636,14 @@
         {
           "file_name": "additional-information-2025-26.pdf",
           "page_number": 1
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 344
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 288
         }
       ],
       "question_type": "number",
@@ -633,7 +651,7 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AR p16 c0: Basic EPS 71.58 (FY 2026); ADD p1: Basic EPS (₹) 71.58."
+      "verification": "AR p16 c0: Basic EPS 71.58 (FY 2026); ADD p1: Basic EPS (₹) 71.58. v2.1: AR p344 and p288 'Basic ... 71.58' added."
     },
     {
       "id": "q23",
@@ -729,6 +747,10 @@
         {
           "file_name": "agm-2026-transcript.pdf",
           "page_number": 3
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 18
         }
       ],
       "question_type": "person",
@@ -736,7 +758,7 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AGM p1: 'Salil Parekh ... Chief Executive Officer and Managing Director'; AGM p3 introduction."
+      "verification": "AGM p1: 'Salil Parekh ... Chief Executive Officer and Managing Director'; AGM p3 introduction. v2.1: AR p18 'Salil Parekh, Chief Executive Officer and Managing Director' added."
     },
     {
       "id": "q27",
@@ -1098,6 +1120,20 @@
       "phrasing": "conversational",
       "expected_behavior": "refuse",
       "verification": "Off-topic test (DR-23)."
+    }
+  ],
+  "label_changes": [
+    {
+      "version": "v2.1",
+      "date": "2026-10-30",
+      "reason": "Label errors found by reading baseline runs 1 and 2; every added page checked against the indexed text. Dev questions only.",
+      "changes": [
+        "q13: added infosys-ar-26.pdf p38 (Total dividend 48.00)",
+        "q14: added infosys-ar-26.pdf p38 (buyback ₹1,800 per share, 18,000); must_include now accepts the share-count form (10,00,00,000 / 10 crore shares) as equivalent to ₹18,000 crore",
+        "q22: added infosys-ar-26.pdf p344 and p288 (Basic EPS 71.58)",
+        "q26: added infosys-ar-26.pdf p18 (Salil Parekh, CEO and MD). Not added: AR p11 (name listed without title)",
+        "Not changed: AGM p14 for q13. The model cited it in run 1, but it does not contain the dividend figure (a real citation error)."
+      ]
     }
   ]
 }
