@@ -1,5 +1,5 @@
 {
-  "version": "v2.1",
+  "version": "v2.2",
   "created": "2026-10-30",
   "notes": "Seed set built from the FY2025-26 corpus. Every reference figure was found in the indexed chunk text (see 'verification'). must_include: every inner list must be matched by at least one of its strings (case-insensitive; commas, spaces and currency signs ignored). relevant_pages: pages known to contain the answer; any one of them counts as a hit. Split: stratified by answer group (numeric / text / decline), ~60% dev / 40% test, seed 20261030, fixed before any run. Error analysis uses the dev split only; the test split is for reporting.",
   "questions": [
@@ -533,10 +533,11 @@
       "id": "q19",
       "split": "dev",
       "question": "How many people work at Infosys?",
-      "reference_answer": "3,28,594 employees (as of March 31, 2026).",
+      "reference_answer": "3,28,594 employees (as of March 31, 2026). The annual report also states 'Over 3,25,000 of our people' (AR p10), which is accepted.",
       "must_include": [
         [
-          "3,28,594"
+          "3,28,594",
+          "3,25,000"
         ]
       ],
       "relevant_pages": [
@@ -566,7 +567,7 @@
       "difficulty": "single_chunk",
       "phrasing": "conversational",
       "expected_behavior": "answer",
-      "verification": "Paraphrase of q18 ('people work at' vs 'employees')."
+      "verification": "Paraphrase of q18 ('people work at' vs 'employees'). v2.2: AR p10 'Over 3,25,000 of our people work...' accepted."
     },
     {
       "id": "q20",
@@ -609,6 +610,10 @@
         {
           "file_name": "infosys-ar-26.pdf",
           "page_number": 16
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 26
         }
       ],
       "question_type": "percentage",
@@ -616,16 +621,17 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AR p16 c2: Return on equity 31.6%. (ADD p1 also lists ROE in USD terms; not checked.)"
+      "verification": "AR p16 c2: Return on equity 31.6%. (ADD p1 also lists ROE in USD terms; not checked.) v2.2: AR p26 'Performance highlights ... 31.6% Return on Equity' added."
     },
     {
       "id": "q22",
       "split": "dev",
       "question": "What was Infosys's basic earnings per share for FY2026?",
-      "reference_answer": "₹71.58.",
+      "reference_answer": "₹71.58 consolidated basic EPS (AR p16, p288, p344). The question does not say consolidated or standalone; the standalone figure ₹70.87 (AR p261) is also accepted.",
       "must_include": [
         [
-          "71.58"
+          "71.58",
+          "70.87"
         ]
       ],
       "relevant_pages": [
@@ -644,6 +650,10 @@
         {
           "file_name": "infosys-ar-26.pdf",
           "page_number": 288
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 261
         }
       ],
       "question_type": "number",
@@ -651,7 +661,7 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AR p16 c0: Basic EPS 71.58 (FY 2026); ADD p1: Basic EPS (₹) 71.58. v2.1: AR p344 and p288 'Basic ... 71.58' added."
+      "verification": "AR p16 c0: Basic EPS 71.58 (FY 2026); ADD p1: Basic EPS (₹) 71.58. v2.1: AR p344 and p288 'Basic ... 71.58' added. v2.2: ambiguous question; AR p261 standalone 70.87 added and accepted."
     },
     {
       "id": "q23",
@@ -751,6 +761,14 @@
         {
           "file_name": "infosys-ar-26.pdf",
           "page_number": 18
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 193
+        },
+        {
+          "file_name": "infosys-ar-26.pdf",
+          "page_number": 350
         }
       ],
       "question_type": "person",
@@ -758,7 +776,7 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AGM p1: 'Salil Parekh ... Chief Executive Officer and Managing Director'; AGM p3 introduction. v2.1: AR p18 'Salil Parekh, Chief Executive Officer and Managing Director' added."
+      "verification": "AGM p1: 'Salil Parekh ... Chief Executive Officer and Managing Director'; AGM p3 introduction. v2.1: AR p18 'Salil Parekh, Chief Executive Officer and Managing Director' added. v2.2: AR p193 and p350 (Salil Parekh, CEO and MD) added."
     },
     {
       "id": "q27",
@@ -801,7 +819,8 @@
           "Nitin Paranjpe"
         ],
         [
-          "April 30"
+          "April 30",
+          "30 April"
         ]
       ],
       "relevant_pages": [
@@ -815,7 +834,7 @@
       "difficulty": "single_chunk",
       "phrasing": "document_vocabulary",
       "expected_behavior": "answer",
-      "verification": "AGM p7 c5: 'Nitin Paranjpe ... has been appointed as Vice Chairman of the Company effective April 30th, 2026.'"
+      "verification": "AGM p7 c5: 'Nitin Paranjpe ... has been appointed as Vice Chairman of the Company effective April 30th, 2026.' v2.2: date format '30 April' accepted."
     },
     {
       "id": "q29",
@@ -1133,6 +1152,19 @@
         "q22: added infosys-ar-26.pdf p344 and p288 (Basic EPS 71.58)",
         "q26: added infosys-ar-26.pdf p18 (Salil Parekh, CEO and MD). Not added: AR p11 (name listed without title)",
         "Not changed: AGM p14 for q13. The model cited it in run 1, but it does not contain the dividend figure (a real citation error)."
+      ]
+    },
+    {
+      "version": "v2.2",
+      "date": "2026-10-30",
+      "reason": "Label errors and one ambiguous question found by reading change A runs 1 and 2; every change checked against the indexed text. Dev questions only. Applied after the change A verdict on v2.1 labels was recorded, and to baseline and change A runs alike.",
+      "changes": [
+        "q28: must_include accepts '30 April' as well as 'April 30' (correct answer in a different date format was scored wrong)",
+        "q19: must_include accepts '3,25,000'; AR p10 states 'Over 3,25,000 of our people work to amplify human potential' (the question's own wording)",
+        "q21: added infosys-ar-26.pdf p26 (Performance highlights: 31.6% Return on Equity)",
+        "q22: question is ambiguous (consolidated vs standalone); accepts 70.87 (standalone, AR p261) as well as 71.58 (consolidated); added AR p261. Follow-up: add two explicit questions (consolidated / standalone) in the next question-set expansion",
+        "q26: added infosys-ar-26.pdf p193 and p350 (Salil Parekh, Chief Executive Officer and Managing Director)",
+        "Not changed: q31. The answer ₹601.07 crore is a sum the model calculated (558.04 + 43.03); it appears nowhere in the documents. The documented global figure is ₹666 crore."
       ]
     }
   ]

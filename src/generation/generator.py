@@ -28,6 +28,13 @@ from src.llm.groq_client import chat
 
 DEFAULT_MODEL = "openai/gpt-oss-20b"
 
+# Token budget for answer generation. max_tokens caps hidden reasoning PLUS the
+# answer for a reasoning model; at 512 the baseline returned empty answers on
+# 2-3 of 24 questions with finish_reason=length (DR-26). 2048 is a ceiling,
+# not a target: you pay only for tokens used.
+GENERATION_MAX_TOKENS = 2048
+GENERATION_REASONING_EFFORT = "low"
+
 
 SYSTEM_PROMPT = """You are a research analyst assistant. You answer questions about business documents.
 
@@ -169,7 +176,8 @@ Answer the question using only the context documents above. Cite your sources us
         ],
         model=model,
         temperature=0.1,
-        max_tokens=512,
+        max_tokens=GENERATION_MAX_TOKENS,
+        reasoning_effort=GENERATION_REASONING_EFFORT,
         purpose="generation",
     )
     answer = llm.text  # already "" if the model returned no content

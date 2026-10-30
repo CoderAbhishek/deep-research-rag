@@ -1,20 +1,26 @@
 {
   "description": "Questions that passed in every baseline run. After any change, each must still pass or the failure must be explained.",
   "from_runs": [
-    "20261030-113403_dev__rescored_v2.1",
-    "20261030-133204_dev__rescored_v2.1"
+    "20261030-154958_dev__rescored_v2.2",
+    "20261030-162610_dev__rescored_v2.2"
   ],
   "question_set_versions": [
-    "v2.1"
+    "v2.2"
   ],
   "ids": [
+    "q09",
+    "q10",
     "q13",
     "q14",
     "q15",
     "q17",
     "q18",
+    "q19",
+    "q22",
     "q23",
+    "q26",
     "q28",
+    "q36",
     "q38",
     "q39",
     "q41"

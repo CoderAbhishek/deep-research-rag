@@ -46,6 +46,8 @@ class LLMResult:
     latency_s: float
     cost_usd: Optional[float]
     reasoning_chars: int
+    max_tokens: Optional[int] = None          # the ceiling this call ran with
+    reasoning_effort: Optional[str] = None    # "low" / "medium" / "high", or None = model default
 
     def stats(self) -> Dict[str, Any]:
         """Everything except the text (the text is returned separately)."""
@@ -79,7 +81,8 @@ def _get_client() -> Groq:
 
 @traceable(run_type="llm", name="groq.chat")
 def _traced_chat(messages: List[Dict[str, str]], model: str,
-                 temperature: float, max_tokens: int) -> Dict[str, Any]:
+                 temperature: float, max_tokens: int,
+                 reasoning_effort: Optional[str] = None) -> Dict[str, Any]:
     """
     The actual API call, recorded by LangSmith as an "llm" run.
 
@@ -87,6 +90,12 @@ def _traced_chat(messages: List[Dict[str, str]], model: str,
     exact messages sent). The returned dict becomes the run's outputs. The
     'usage_metadata' key is the format LangSmith reads to display token counts
     and cost for an llm run.
+
+    reasoning_effort: for reasoning models (gpt-oss) Groq accepts "low",
+    "medium" or "high". groq==0.13.0 has no named argument for it, so it is
+    sent in the request body via extra_body. None = the model's default.
+    For a reasoning model, max_tokens caps reasoning AND visible output
+    together (DR-26).
     """
     start = time.perf_counter()
     response = _get_client().chat.completions.create(
@@ -94,6 +103,7 @@ def _traced_chat(messages: List[Dict[str, str]], model: str,
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
+        extra_body={"reasoning_effort": reasoning_effort} if reasoning_effort else None,
     )
     latency_s = time.perf_counter() - start
 
@@ -130,7 +140,7 @@ def _traced_chat(messages: List[Dict[str, str]], model: str,
 
 
 def chat(messages: List[Dict[str, str]], *, model: str, temperature: float,
-         max_tokens: int, purpose: str) -> LLMResult:
+         max_tokens: int, purpose: str, reasoning_effort: Optional[str] = None) -> LLMResult:
     """
     Call Groq once, trace it, log it, and return an LLMResult.
 
@@ -141,13 +151,14 @@ def chat(messages: List[Dict[str, str]], *, model: str, temperature: float,
     start = time.perf_counter()
     try:
         out = _traced_chat(
-            messages, model, temperature, max_tokens,
+            messages, model, temperature, max_tokens, reasoning_effort,
             # langsmith_extra is consumed by @traceable, not by _traced_chat.
             # ls_provider / ls_model_name are LangSmith's standard metadata
             # keys for identifying the model on an llm run.
             langsmith_extra={
                 "name": f"groq.chat ({purpose})",
-                "metadata": {"ls_provider": "groq", "ls_model_name": model, "purpose": purpose},
+                "metadata": {"ls_provider": "groq", "ls_model_name": model, "purpose": purpose,
+                             "max_tokens": max_tokens, "reasoning_effort": reasoning_effort},
             },
         )
     except Exception:
@@ -166,13 +177,15 @@ def chat(messages: List[Dict[str, str]], *, model: str, temperature: float,
         latency_s=round(out["latency_s"], 3),
         cost_usd=out["cost_usd"],
         reasoning_chars=out["reasoning_chars"],
+        max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
     )
 
     cost_text = f"{result.cost_usd:.6f}" if result.cost_usd is not None else "n/a"
     logger.info(
-        "LLM %s: model=%s latency=%.2fs tokens(prompt=%s, completion=%s) finish_reason=%s cost_usd=%s",
-        purpose, model, result.latency_s, result.prompt_tokens, result.completion_tokens,
-        result.finish_reason, cost_text,
+        "LLM %s: model=%s effort=%s latency=%.2fs tokens(prompt=%s, completion=%s/%d) finish_reason=%s cost_usd=%s",
+        purpose, model, reasoning_effort or "default", result.latency_s, result.prompt_tokens,
+        result.completion_tokens, max_tokens, result.finish_reason, cost_text,
     )
     if result.finish_reason != "stop" or not result.text:
         logger.warning(

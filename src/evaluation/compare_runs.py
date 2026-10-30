@@ -61,6 +61,7 @@ ROW_METRICS = [
 SUMMARY_METRICS = [
     ("HyDE cut off (count)", ("hyde_cut_off",), False),
     ("Generation cut off (count)", ("generation_cut_off",), False),
+    ("HyDE fallback used (count)", ("hyde_fallback",), False),
     ("Latency p50 (s)", ("latency_s", "p50"), False),
     ("Latency p95 (s)", ("latency_s", "p95"), False),
     ("Tokens per question", ("tokens_mean",), False),
