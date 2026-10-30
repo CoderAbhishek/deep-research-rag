@@ -1,0 +1,655 @@
+{
+  "baseline_runs": [
+    "20261030-154958_dev__rescored_v2.2",
+    "20261030-162610_dev__rescored_v2.2"
+  ],
+  "candidate_runs": [],
+  "question_set_versions": [
+    "v2.2"
+  ],
+  "per_question": [
+    {
+      "id": "q02",
+      "question": "What was Infosys's revenue in US dollars for fiscal 2026?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q03",
+      "question": "What was Infosys's net profit for FY26?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q04",
+      "question": "How much revenue did Infosys earn from North America in FY2026?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "generation",
+        "generation"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q09",
+      "question": "What is Infosys's largest business segment by revenue?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q10",
+      "question": "What was Infosys's adjusted operating margin for fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q11",
+      "question": "What was Infosys's free cash flow in FY26?",
+      "status": "unstable",
+      "baseline": [
+        true,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q13",
+      "question": "What total dividend per share did Infosys declare for fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q14",
+      "question": "How large was the share buyback Infosys completed, and at what price per share?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q15",
+      "question": "What was Infosys's large deal TCV in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q17",
+      "question": "How many US$50 million+ clients did Infosys have in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q18",
+      "question": "How many employees did Infosys have at the end of fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q19",
+      "question": "How many people work at Infosys?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q21",
+      "question": "What was Infosys's return on equity in fiscal 2026?",
+      "status": "unstable",
+      "baseline": [
+        false,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "fusion",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q22",
+      "question": "What was Infosys's basic earnings per share for FY2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q23",
+      "question": "What is Infosys Cobalt?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q25",
+      "question": "How does Infosys classify its services?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "not_retrieved",
+        "not_retrieved"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q26",
+      "question": "Who is the CEO of Infosys?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q28",
+      "question": "Who was appointed Vice Chairman of Infosys, and from what date?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q31",
+      "question": "How much did Infosys spend on CSR globally in fiscal 2026?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "rerank"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q32",
+      "question": "Which Infosys CSR project focuses on lakes, and in which state is it carried out?",
+      "status": "stable_fail",
+      "baseline": [
+        false,
+        false
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "not_retrieved",
+        "not_retrieved"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q36",
+      "question": "What share of Infosys's revenue comes from exports?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "ok",
+        "ok"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q38",
+      "question": "What was TCS's revenue in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "n/a",
+        "n/a"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q39",
+      "question": "Why did Infosys's revenue fall by 20% in fiscal 2026?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "rerank",
+        "generation"
+      ],
+      "candidate_lost_at": []
+    },
+    {
+      "id": "q41",
+      "question": "What is the capital of France?",
+      "status": "stable_pass",
+      "baseline": [
+        true,
+        true
+      ],
+      "candidate": [],
+      "baseline_lost_at": [
+        "n/a",
+        "n/a"
+      ],
+      "candidate_lost_at": []
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "Behaviour accuracy",
+      "n_questions": 24,
+      "baseline": [
+        0.7083333333333334,
+        0.7083333333333334
+      ],
+      "baseline_mean": 0.7083333333333334,
+      "baseline_spread": 0.0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Answer accuracy (answerable)",
+      "n_questions": 21,
+      "baseline": [
+        0.6666666666666666,
+        0.6666666666666666
+      ],
+      "baseline_mean": 0.6666666666666666,
+      "baseline_spread": 0.0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "False refusal rate",
+      "n_questions": 21,
+      "baseline": [
+        0.23809523809523808,
+        0.23809523809523808
+      ],
+      "baseline_mean": 0.23809523809523808,
+      "baseline_spread": 0.0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Correct refusal rate",
+      "n_questions": 2,
+      "baseline": [
+        1.0,
+        1.0
+      ],
+      "baseline_mean": 1.0,
+      "baseline_spread": 0.0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@20 dense",
+      "n_questions": 22,
+      "baseline": [
+        0.7272727272727273,
+        0.7272727272727273
+      ],
+      "baseline_mean": 0.7272727272727273,
+      "baseline_spread": 0.0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@20 BM25",
+      "n_questions": 22,
+      "baseline": [
+        0.6363636363636364,
+        0.6363636363636364
+      ],
+      "baseline_mean": 0.6363636363636364,
+      "baseline_spread": 0.0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@20 RRF",
+      "n_questions": 22,
+      "baseline": [
+        0.8636363636363636,
+        0.9090909090909091
+      ],
+      "baseline_mean": 0.8863636363636364,
+      "baseline_spread": 0.045454545454545414,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@5 RRF",
+      "n_questions": 22,
+      "baseline": [
+        0.6363636363636364,
+        0.5909090909090909
+      ],
+      "baseline_mean": 0.6136363636363636,
+      "baseline_spread": 0.045454545454545414,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@5 rerank",
+      "n_questions": 22,
+      "baseline": [
+        0.6818181818181818,
+        0.7272727272727273
+      ],
+      "baseline_mean": 0.7045454545454546,
+      "baseline_spread": 0.045454545454545525,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Hit@5 final",
+      "n_questions": 22,
+      "baseline": [
+        0.6818181818181818,
+        0.7272727272727273
+      ],
+      "baseline_mean": 0.7045454545454546,
+      "baseline_spread": 0.045454545454545525,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "MRR@5 RRF",
+      "n_questions": 22,
+      "baseline": [
+        0.4249999999999999,
+        0.3098484848484848
+      ],
+      "baseline_mean": 0.3674242424242423,
+      "baseline_spread": 0.11515151515151506,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "MRR@5 rerank",
+      "n_questions": 22,
+      "baseline": [
+        0.5378787878787878,
+        0.5257575757575758
+      ],
+      "baseline_mean": 0.5318181818181817,
+      "baseline_spread": 0.012121212121212088,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Citation precision",
+      "n_questions": 15,
+      "baseline": [
+        0.6,
+        0.6666666666666666
+      ],
+      "baseline_mean": 0.6333333333333333,
+      "baseline_spread": 0.06666666666666665,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "HyDE cut off (count)",
+      "n_questions": null,
+      "baseline": [
+        0,
+        0
+      ],
+      "baseline_mean": 0.0,
+      "baseline_spread": 0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Generation cut off (count)",
+      "n_questions": null,
+      "baseline": [
+        0,
+        0
+      ],
+      "baseline_mean": 0.0,
+      "baseline_spread": 0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "HyDE fallback used (count)",
+      "n_questions": null,
+      "baseline": [
+        0,
+        0
+      ],
+      "baseline_mean": 0.0,
+      "baseline_spread": 0,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Latency p50 (s)",
+      "n_questions": null,
+      "baseline": [
+        1.894,
+        1.869
+      ],
+      "baseline_mean": 1.8815,
+      "baseline_spread": 0.02499999999999991,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Latency p95 (s)",
+      "n_questions": null,
+      "baseline": [
+        2.631,
+        3.154
+      ],
+      "baseline_mean": 2.8925,
+      "baseline_spread": 0.5230000000000001,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Tokens per question",
+      "n_questions": null,
+      "baseline": [
+        1472.875,
+        1463.25
+      ],
+      "baseline_mean": 1468.0625,
+      "baseline_spread": 9.625,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    },
+    {
+      "metric": "Cost per run (USD)",
+      "n_questions": null,
+      "baseline": [
+        0.00404,
+        0.004032
+      ],
+      "baseline_mean": 0.004036,
+      "baseline_spread": 8.000000000000194e-06,
+      "candidate": [],
+      "candidate_mean": null,
+      "delta": null,
+      "verdict": "-"
+    }
+  ],
+  "regression_failures": []
+}
