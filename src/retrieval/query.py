@@ -15,6 +15,14 @@ from src.llm.groq_client import LLMResult, chat
 
 DEFAULT_MODEL = "openai/gpt-oss-20b"
 
+# Token budget for query-side LLM calls (HyDE, rewriting, multi-query).
+# gpt-oss-20b is a reasoning model: max_tokens caps hidden reasoning PLUS the
+# visible output. At 512 with default reasoning, HyDE hit the limit on 14-15 of
+# 24 baseline questions (DR-26). HyDE needs ~150 visible tokens and almost no
+# reasoning, so: a higher ceiling (a cap, not a target) and low effort.
+QUERY_MAX_TOKENS = 1024
+QUERY_REASONING_EFFORT = "low"
+
 load_dotenv()
 
 
@@ -27,7 +35,8 @@ def _call_llm(system_prompt: str, user_prompt: str, model: str = DEFAULT_MODEL,
     (tokens, latency, finish_reason, cost) are used for observability.
     purpose labels the call in logs and in the LangSmith trace.
     temperature=0.3: focused, near-deterministic rewrites.
-    max_tokens=512: query rewrites and HyDE passages are short.
+    max_tokens / reasoning_effort: QUERY_MAX_TOKENS / QUERY_REASONING_EFFORT
+    (see the note at the top of this module).
     """
     result = chat(
         messages=[
@@ -36,7 +45,8 @@ def _call_llm(system_prompt: str, user_prompt: str, model: str = DEFAULT_MODEL,
         ],
         model=model,
         temperature=0.3,
-        max_tokens=512,
+        max_tokens=QUERY_MAX_TOKENS,
+        reasoning_effort=QUERY_REASONING_EFFORT,
         purpose=purpose,
     )
     result.text = result.text.strip()

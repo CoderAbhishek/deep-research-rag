@@ -266,13 +266,24 @@ def run_pipeline(
     hyde = stage_hyde(query)
     timings["hyde_s"] = time.perf_counter() - t0
     hyde_passage = hyde["passage"]
-    logger.info("[1/7] HyDE: %d-char passage in %.2fs", len(hyde_passage), timings["hyde_s"])
+    hyde_finish = hyde["llm"].get("finish_reason")
+    logger.info("[1/7] HyDE: %d-char passage in %.2fs (finish_reason=%s)",
+                len(hyde_passage), timings["hyde_s"], hyde_finish)
     logger.debug("HyDE passage: %s", hyde_passage)
 
-    # Stage 2 - Dense retrieval (embeds the HyDE passage)
+    # HyDE fallback (DR-26): a cut-off or empty passage is a broken query for
+    # dense retrieval (baseline: dense hit@20 27% when HyDE was cut off vs 72%
+    # when it finished). In that case embed the original question instead.
+    hyde_fallback = not hyde_usable(hyde_passage, hyde_finish)
+    dense_query = query if hyde_fallback else hyde_passage
+    if hyde_fallback:
+        logger.warning("HyDE unusable (finish_reason=%s, %d chars): dense retrieval uses the original question.",
+                       hyde_finish, len(hyde_passage))
+
+    # Stage 2 - Dense retrieval (embeds the HyDE passage, or the question on fallback)
     t0 = time.perf_counter()
     dense_results = stage_dense(
-        hyde_passage,
+        dense_query,
         resources["collection"],
         resources["embed_model"],
         n_results=pool_size,
@@ -357,6 +368,8 @@ def run_pipeline(
     result["debug"] = {
         "trace_id": trace_id,
         "hyde_passage": hyde_passage,
+        "hyde_fallback": hyde_fallback,
+        "dense_query_source": "question" if hyde_fallback else "hyde",
         "counts": {
             "dense": len(dense_results),
             "bm25": len(bm25_results),
@@ -381,6 +394,11 @@ def run_pipeline(
 
 
 # --- small helpers for logs and the debug payload ---------------------------
+
+def hyde_usable(passage: str, finish_reason) -> bool:
+    """A HyDE passage is usable if it is non-empty and was not cut off at max_tokens."""
+    return bool((passage or "").strip()) and finish_reason != "length"
+
 
 def _chunk_keys(results: list) -> set:
     """Identity of each chunk: (file, page, chunk index), as used by RRF."""

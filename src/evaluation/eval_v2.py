@@ -64,7 +64,7 @@ CSV_COLUMNS = [
     "dense_pages", "bm25_pages", "rrf_pages", "rerank_pages",
     "dedup_removed", "dense_bm25_overlap",
     "latency_s", "total_tokens", "cost_usd", "hyde_finish_reason", "generation_finish_reason",
-    "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars",
+    "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars", "hyde_fallback",
     "generation_completion_tokens", "generation_reasoning_chars",
     "error", "request_id", "trace_id",
     "review_pass", "review_note", "failure_category",
@@ -182,6 +182,7 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "hyde_chars": len(debug.get("hyde_passage") or ""),
         "hyde_completion_tokens": hyde_llm.get("completion_tokens"),
         "hyde_reasoning_chars": hyde_llm.get("reasoning_chars"),
+        "hyde_fallback": debug.get("hyde_fallback"),
         "generation_completion_tokens": gen_llm.get("completion_tokens"),
         "generation_reasoning_chars": gen_llm.get("reasoning_chars"),
         # Full ranked page lists, so the run can be re-scored if labels change.
@@ -221,6 +222,7 @@ def summarise(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "tokens_mean": m.mean(r["total_tokens"] for r in ok),
         "hyde_cut_off": sum(1 for r in ok if r.get("hyde_finish_reason") == "length"),
         "generation_cut_off": sum(1 for r in ok if r.get("generation_finish_reason") == "length"),
+        "hyde_fallback": sum(1 for r in ok if r.get("hyde_fallback") is True),
         "cost_usd_total": round(sum(r["cost_usd"] for r in ok if r["cost_usd"] is not None), 6) if ok else None,
     }
 
@@ -263,7 +265,8 @@ def log_summary(s: Dict[str, Any]) -> None:
     logger.info("  hit@5  %s", o["retrieval"]["hit@5"])
     logger.info("  mrr@5  %s", o["retrieval"]["mrr@5"])
     logger.info("  where answers were lost: %s", o["lost_at"])
-    logger.info("  cut off at max_tokens: HyDE %s, generation %s", o["hyde_cut_off"], o["generation_cut_off"])
+    logger.info("  cut off at max_tokens: HyDE %s, generation %s   HyDE fallback used: %s",
+                o["hyde_cut_off"], o["generation_cut_off"], o["hyde_fallback"])
     logger.info("  latency p50/p95 %s s   tokens/question %s   total cost USD %s",
                 (o["latency_s"]["p50"], o["latency_s"]["p95"]), o["tokens_mean"], o["cost_usd_total"])
     for g, gs in s["by_group"].items():
@@ -297,8 +300,8 @@ def main(argv: Optional[List[str]] = None) -> Dict[str, Any]:
     version = question_set_version(args.questions)
 
     from src.pipeline import rag_pipeline as rp
-    from src.generation.generator import DEFAULT_MODEL as GEN_MODEL
-    from src.retrieval.query import DEFAULT_MODEL as HYDE_MODEL
+    from src.generation import generator as gen
+    from src.retrieval import query as qmod
 
     from src.observability.tracing import log_tracing_status  # imported here so rescore/compare need no langsmith
     log_tracing_status(logger)
@@ -321,7 +324,11 @@ def main(argv: Optional[List[str]] = None) -> Dict[str, Any]:
         "config": {
             "split": args.split, "ids": args.ids, "limit": args.limit, "questions_file": args.questions,
             "question_set_version": version,
-            "git_commit": _git_commit(), "hyde_model": HYDE_MODEL, "generation_model": GEN_MODEL,
+            "git_commit": _git_commit(), "hyde_model": qmod.DEFAULT_MODEL, "generation_model": gen.DEFAULT_MODEL,
+            "hyde_max_tokens": getattr(qmod, "QUERY_MAX_TOKENS", 512),
+            "hyde_reasoning_effort": getattr(qmod, "QUERY_REASONING_EFFORT", None),
+            "generation_max_tokens": getattr(gen, "GENERATION_MAX_TOKENS", 512),
+            "generation_reasoning_effort": getattr(gen, "GENERATION_REASONING_EFFORT", None),
             "embed_model": rp.EMBED_MODEL, "reranker_model": rp.RERANKER_MODEL,
             "pool_size": rp.POOL_SIZE, "top_k_rerank": rp.TOP_K_RERANK, "top_k_generate": rp.TOP_K_GENERATE,
         },
