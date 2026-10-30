@@ -1,0 +1,182 @@
+{
+  "run_id": "20261030-133204_dev",
+  "config": {
+    "split": "dev",
+    "ids": null,
+    "limit": null,
+    "questions_file": "data/eval/questions_v2.json",
+    "git_commit": "c169990",
+    "hyde_model": "openai/gpt-oss-20b",
+    "generation_model": "openai/gpt-oss-20b",
+    "embed_model": "all-MiniLM-L6-v2",
+    "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "pool_size": 20,
+    "top_k_rerank": 5,
+    "top_k_generate": 5
+  },
+  "overall": {
+    "questions": 24,
+    "errors": 0,
+    "behaviour_accuracy": 0.5417,
+    "answer_accuracy_answerable": 0.4762,
+    "false_refusal_rate_answerable": 0.2857,
+    "correct_refusal_rate_should_decline": 1.0,
+    "retrieval": {
+      "hit@20": {
+        "dense": 0.4091,
+        "bm25": 0.5909,
+        "rrf": 0.6818
+      },
+      "hit@5": {
+        "dense": 0.4091,
+        "bm25": 0.3636,
+        "rrf": 0.5,
+        "rerank": 0.4545,
+        "final": 0.4545
+      },
+      "mrr@5": {
+        "dense": 0.2841,
+        "bm25": 0.2045,
+        "rrf": 0.2386,
+        "rerank": 0.3144
+      }
+    },
+    "lost_at": {
+      "fusion": 2,
+      "generation": 3,
+      "n/a": 2,
+      "not_retrieved": 5,
+      "ok": 7,
+      "rerank": 5
+    },
+    "citation_precision": 0.4231,
+    "latency_s": {
+      "p50": 2.354,
+      "p95": 3.257
+    },
+    "tokens_mean": 1843.4583,
+    "cost_usd_total": 0.006967
+  },
+  "by_group": {
+    "decline": {
+      "questions": 3,
+      "errors": 0,
+      "behaviour_accuracy": 1.0,
+      "answer_accuracy_answerable": null,
+      "false_refusal_rate_answerable": null,
+      "correct_refusal_rate_should_decline": 1.0,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.0,
+          "bm25": 1.0,
+          "rrf": 0.0
+        },
+        "hit@5": {
+          "dense": 0.0,
+          "bm25": 0.0,
+          "rrf": 0.0,
+          "rerank": 0.0,
+          "final": 0.0
+        },
+        "mrr@5": {
+          "dense": 0.0,
+          "bm25": 0.0,
+          "rrf": 0.0,
+          "rerank": 0.0
+        }
+      },
+      "lost_at": {
+        "fusion": 1,
+        "n/a": 2
+      },
+      "citation_precision": null,
+      "latency_s": {
+        "p50": 2.26,
+        "p95": 2.61
+      },
+      "tokens_mean": 1779.0,
+      "cost_usd_total": 0.000852
+    },
+    "numeric": {
+      "questions": 16,
+      "errors": 0,
+      "behaviour_accuracy": 0.4375,
+      "answer_accuracy_answerable": 0.4375,
+      "false_refusal_rate_answerable": 0.25,
+      "correct_refusal_rate_should_decline": null,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.5,
+          "bm25": 0.625,
+          "rrf": 0.8125
+        },
+        "hit@5": {
+          "dense": 0.5,
+          "bm25": 0.375,
+          "rrf": 0.5625,
+          "rerank": 0.5,
+          "final": 0.5
+        },
+        "mrr@5": {
+          "dense": 0.3594,
+          "bm25": 0.1875,
+          "rrf": 0.276,
+          "rerank": 0.349
+        }
+      },
+      "lost_at": {
+        "fusion": 1,
+        "generation": 3,
+        "not_retrieved": 2,
+        "ok": 5,
+        "rerank": 5
+      },
+      "citation_precision": 0.45,
+      "latency_s": {
+        "p50": 2.359,
+        "p95": 3.111
+      },
+      "tokens_mean": 1891.8125,
+      "cost_usd_total": 0.004679
+    },
+    "text": {
+      "questions": 5,
+      "errors": 0,
+      "behaviour_accuracy": 0.6,
+      "answer_accuracy_answerable": 0.6,
+      "false_refusal_rate_answerable": 0.4,
+      "correct_refusal_rate_should_decline": null,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.2,
+          "bm25": 0.4,
+          "rrf": 0.4
+        },
+        "hit@5": {
+          "dense": 0.2,
+          "bm25": 0.4,
+          "rrf": 0.4,
+          "rerank": 0.4,
+          "final": 0.4
+        },
+        "mrr@5": {
+          "dense": 0.1,
+          "bm25": 0.3,
+          "rrf": 0.1667,
+          "rerank": 0.2667
+        }
+      },
+      "lost_at": {
+        "not_retrieved": 3,
+        "ok": 2
+      },
+      "citation_precision": 0.3333,
+      "latency_s": {
+        "p50": 2.354,
+        "p95": 3.247
+      },
+      "tokens_mean": 1727.4,
+      "cost_usd_total": 0.001436
+    }
+  }
+}

@@ -15,6 +15,10 @@ langchain-groq==0.3.2
 # Groq API client
 groq==0.13.0
 
+# LangSmith tracing (@traceable). Pinned because the code imports it directly
+# (it was previously installed only as a dependency of langchain).
+langsmith==0.3.45
+
 # Environment variable loading
 python-dotenv==1.0.1
 

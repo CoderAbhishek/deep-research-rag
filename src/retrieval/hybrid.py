@@ -10,8 +10,8 @@ RRF formula (Cormack, Clarke, Buettcher — SIGIR 2009):
     RRF_score(d) = Σ_i  1 / (rank_i(d) + k)
 
 Where:
-    rank_i(d) = the 0-indexed rank of document d in system i's list
-                (rank 0 = best result from that system)
+    rank_i(d) = the 1-indexed rank of document d in system i's list
+                (rank 1 = best result from that system)
     k = 60     — damping constant; makes rank differences small enough
                 that a document consistent across both systems beats
                 one that was top-1 in only one system

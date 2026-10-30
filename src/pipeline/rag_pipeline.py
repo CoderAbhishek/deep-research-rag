@@ -18,23 +18,34 @@ This is essential for debugging: when the answer is wrong, you can tell
 immediately whether retrieval returned the wrong chunks (retrieval problem)
 or the LLM ignored the correct chunks (generation problem).
 
-Environment variables required (all in .env):
-    GROQ_API_KEY         — for HyDE generation and answer generation
-    LANGSMITH_API_KEY    — for LangSmith tracing
-    LANGCHAIN_PROJECT    — project name shown in LangSmith UI (optional)
+Logging:
+Each stage logs one INFO line (what it produced and how long it took).
+LOG_LEVEL=DEBUG also logs the HyDE passage and every candidate chunk.
+The same detail is returned in result["debug"].
+
+Environment variables (all in .env):
+    GROQ_API_KEY          - for HyDE generation and answer generation
+    LANGCHAIN_TRACING_V2  - "true" turns LangSmith tracing on (optional)
+    LANGSMITH_API_KEY     - for LangSmith tracing (optional)
+    LANGCHAIN_PROJECT     - project name shown in LangSmith UI (optional)
+    LOG_LEVEL             - DEBUG | INFO | WARNING (optional, default INFO)
 """
 
-import os
+import logging
+import time
+
 import chromadb
+from langsmith import get_current_run_tree, traceable
 from sentence_transformers import SentenceTransformer
-from langsmith import traceable
 
 from src.retrieval.sparse  import build_bm25_index, search_bm25
 from src.retrieval.dense   import search_dense
 from src.retrieval.hybrid  import reciprocal_rank_fusion
-from src.retrieval.query   import generate_hyde
+from src.retrieval.query   import generate_hyde_result
 from src.retrieval.reranker import load_reranker, rerank, deduplicate_by_page
 from src.generation.generator import generate_answer
+
+logger = logging.getLogger(__name__)
 
 
 CHROMA_PATH   = "./chroma_db"
@@ -63,19 +74,19 @@ def load_resources():
     Returns:
         dict with keys: 'collection', 'embed_model', 'bm25', 'chunks', 'reranker'
     """
-    print("Loading ChromaDB...")
+    t_start = time.perf_counter()
+    logger.info("Loading ChromaDB from %s ...", CHROMA_PATH)
     client     = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_collection(name=COLLECTION)
 
-    print("Loading embedding model...")
+    logger.info("Loading embedding model %s ...", EMBED_MODEL)
     embed_model = SentenceTransformer(EMBED_MODEL)
 
-    print("Building BM25 index...")
-    bm25, chunks = build_bm25_index(collection)
-    print(f"  BM25 index: {len(chunks)} chunks")
+    bm25, chunks = build_bm25_index(collection)  # logs its own progress
 
-    print("Loading cross-encoder reranker...")
+    logger.info("Loading cross-encoder %s ...", RERANKER_MODEL)
     reranker = load_reranker(RERANKER_MODEL)
+    logger.info("Resources loaded in %.1fs", time.perf_counter() - t_start)
 
     return {
         "collection":  collection,
@@ -87,7 +98,7 @@ def load_resources():
 
 
 @traceable(name="1. HyDE Generation")
-def stage_hyde(query: str) -> str:
+def stage_hyde(query: str) -> dict:
     """
     Stage 1: Generate a hypothetical document passage using the LLM.
 
@@ -104,7 +115,8 @@ def stage_hyde(query: str) -> str:
     The original query is passed separately to BM25 (keyword matching)
     and to the generator (answering the actual question).
     """
-    return generate_hyde(query)
+    result = generate_hyde_result(query)
+    return {"passage": result.text, "llm": result.stats()}
 
 
 @traceable(name="2. Dense Retrieval")
@@ -166,9 +178,13 @@ def stage_dedup(reranked: list) -> list:
     chunks with different CE scores). Keep only the highest-CE chunk
     per unique (file_name, page_number) pair.
 
-    Session 8 finding: Page 80 appeared at pool positions 4 (CE +0.818)
-    and 12 (CE -1.995). Without deduplication, both compete for top-5 slots.
-    With deduplication, only the table chunk (CE +0.818) survives.
+    Motivation (Session 8): two chunks from page 80 appeared in the same
+    20-candidate pool with very different cross-encoder scores (+0.818 and
+    -1.995). Deduplication guarantees one page cannot take two slots.
+
+    Note: this runs on the already-truncated top-5 list, so when it removes
+    a duplicate the generator receives fewer than 5 chunks. In the recorded
+    test runs it removed nothing.
     """
     return deduplicate_by_page(reranked)
 
@@ -191,7 +207,6 @@ def run_pipeline(
     pool_size:      int = POOL_SIZE,
     top_k_rerank:   int = TOP_K_RERANK,
     top_k_generate: int = TOP_K_GENERATE,
-    verbose:        bool = True,
 ) -> dict:
     """
     Run the full RAG pipeline end-to-end.
@@ -201,6 +216,11 @@ def run_pipeline(
     a child run under this parent — you see the full tree in the LangSmith
     UI: RAG Pipeline → HyDE Generation → Dense Retrieval → ... → LLM Generation.
 
+    Progress is logged (one INFO line per stage) instead of printed. Set
+    LOG_LEVEL=DEBUG to also log the HyDE passage and every candidate.
+    Callers can pass langsmith_extra={"metadata": {...}, "tags": [...]};
+    @traceable consumes it and attaches it to this trace.
+
     Args:
         query:          User's question.
         resources:      Dict from load_resources() — collection, embed_model,
@@ -208,17 +228,18 @@ def run_pipeline(
         pool_size:      Candidates to retrieve from dense and BM25 each.
                         Both systems are called with n_results=pool_size,
                         then the results are fused. Default 20.
-        top_k_rerank:   Candidates from the RRF pool to pass to the
-                        cross-encoder. Cross-encoder sees top_k_rerank
-                        (query, chunk) pairs. Default 5.
+        top_k_rerank:   How many candidates to keep after reranking.
+                        The cross-encoder scores every candidate in the
+                        RRF pool (pool_size pairs) and keeps the best
+                        top_k_rerank. Default 5.
         top_k_generate: Chunks to pass to the LLM after deduplication.
                         Typically ≤ top_k_rerank. Default 5.
-        verbose:        If True, print stage-by-stage progress to stdout.
 
     Returns:
         Dict with:
             'answer'           — the generated answer string
-            'sources'          — list of {source_num, file_name, page_number}
+            'sources'          — sources the answer cites: {source_num, file_name, page_number}
+            'retrieved_sources'— every chunk passed to the generator
             'query'            — the original query
             'num_chunks'       — chunks in the generation context
             'model'            — LLM used for generation
@@ -226,74 +247,163 @@ def run_pipeline(
             'rrf_pool_size'    — how many candidates entered the RRF pool
             'reranked_count'   — how many candidates went to the cross-encoder
             'final_chunk_count'— chunks after deduplication
+            'trace_id'         - LangSmith trace ID (None when tracing is off)
+            'debug'            - stage counts, candidates and scores (dense, BM25,
+                                 RRF pool, reranked), per-stage timings, LLM usage
+                                 and estimated cost
     """
-    if verbose:
-        print(f"\n{'='*60}")
-        print(f"Query: {query}")
-        print(f"{'='*60}")
+    t_pipeline = time.perf_counter()
+    timings = {}
 
-    if verbose: print("\n[Stage 1] Generating HyDE passage...")
-    hyde_passage = stage_hyde(query)
-    if verbose: print(f"  HyDE passage ({len(hyde_passage)} chars) generated.")
+    # When tracing is on, @traceable has already opened the root run for this
+    # call. Its trace_id is the ID you search for in LangSmith.
+    run_tree = get_current_run_tree()
+    trace_id = str(run_tree.trace_id) if run_tree else None
+    logger.info("Pipeline start: query=%r trace_id=%s", query[:200], trace_id or "-")
 
-    if verbose: print(f"\n[Stage 2] Dense retrieval (top-{pool_size})...")
+    # Stage 1 - HyDE
+    t0 = time.perf_counter()
+    hyde = stage_hyde(query)
+    timings["hyde_s"] = time.perf_counter() - t0
+    hyde_passage = hyde["passage"]
+    logger.info("[1/7] HyDE: %d-char passage in %.2fs", len(hyde_passage), timings["hyde_s"])
+    logger.debug("HyDE passage: %s", hyde_passage)
+
+    # Stage 2 - Dense retrieval (embeds the HyDE passage)
+    t0 = time.perf_counter()
     dense_results = stage_dense(
         hyde_passage,
         resources["collection"],
         resources["embed_model"],
         n_results=pool_size,
     )
-    if verbose: print(f"  {len(dense_results)} dense candidates.")
+    timings["dense_s"] = time.perf_counter() - t0
+    logger.info("[2/7] Dense: %d candidates in %.2fs", len(dense_results), timings["dense_s"])
 
-    if verbose: print(f"\n[Stage 3] BM25 retrieval (top-{pool_size})...")
+    # Stage 3 - BM25 (uses the original query)
+    t0 = time.perf_counter()
     bm25_results = stage_bm25(
         query,
         resources["bm25"],
         resources["chunks"],
         n_results=pool_size,
     )
-    if verbose: print(f"  {len(bm25_results)} BM25 candidates.")
+    timings["bm25_s"] = time.perf_counter() - t0
+    logger.info("[3/7] BM25: %d candidates in %.2fs", len(bm25_results), timings["bm25_s"])
 
-    if verbose: print("\n[Stage 4] RRF fusion...")
+    # Stage 4 - RRF fusion
+    t0 = time.perf_counter()
     rrf_pool = stage_rrf(dense_results, bm25_results, n_results=pool_size)
-    if verbose: print(f"  RRF pool: {len(rrf_pool)} candidates.")
+    timings["rrf_s"] = time.perf_counter() - t0
+    # Overlap = chunks found by BOTH systems. Only these get a combined RRF
+    # score; with zero overlap, RRF just interleaves the two lists.
+    overlap = len(_chunk_keys(dense_results) & _chunk_keys(bm25_results))
+    logger.info("[4/7] RRF: pool of %d (%d found by both dense and BM25) in %.3fs",
+                len(rrf_pool), overlap, timings["rrf_s"])
+    for c in rrf_pool:
+        logger.debug("  RRF    #%-2d %-40s rrf=%.5f", c["rank"], _cite(c), c["rrf_score"])
 
-    if verbose: print(f"\n[Stage 5] Cross-encoder reranking (top-{top_k_rerank})...")
+    # Stage 5 - Cross-encoder reranking (scores every pool candidate)
+    t0 = time.perf_counter()
     reranked = stage_rerank(
         query,
         rrf_pool,
         resources["reranker"],
         n_results=top_k_rerank,
     )
-    if verbose: print(f"  Reranked: {len(reranked)} candidates.")
+    timings["rerank_s"] = time.perf_counter() - t0
+    # Snapshot now: deduplication renumbers 'rank' on these same dicts.
+    reranked_summary = [_chunk_summary(c, "rerank_score") for c in reranked]
+    top_score = reranked[0]["rerank_score"] if reranked else float("nan")
+    logger.info("[5/7] Rerank: scored %d pairs, kept %d (top score %.3f) in %.2fs",
+                len(rrf_pool), len(reranked), top_score, timings["rerank_s"])
+    for c in reranked:
+        logger.debug("  Rerank #%-2d %-40s ce=%+.3f", c["rank"], _cite(c), c["rerank_score"])
 
-    if verbose: print("\n[Stage 6] Page-level deduplication...")
+    # Stage 6 - Page-level deduplication
+    t0 = time.perf_counter()
     deduped = stage_dedup(reranked)
-    if verbose:
-        print(f"  After dedup: {len(deduped)} unique pages.")
-        for c in deduped:
-            meta = c["metadata"]
-            print(f"    Rank {c['rank']}  Page {meta.get('page_number')}  "
-                  f"CE={c.get('rerank_score', 'n/a'):.4f}  "
-                  f"{meta.get('file_name', '')}")
+    timings["dedup_s"] = time.perf_counter() - t0
+    removed = len(reranked) - len(deduped)
+    logger.info("[6/7] Dedup: %d unique pages (%d duplicate chunks removed)", len(deduped), removed)
 
+    # Stage 7 - LLM generation
     generation_chunks = deduped[:top_k_generate]
-    if verbose: print(f"\n[Stage 7] Generating answer from {len(generation_chunks)} chunks...")
+    t0 = time.perf_counter()
     result = stage_generate(query, generation_chunks)
+    timings["generate_s"] = time.perf_counter() - t0
+    cited = [s["source_num"] for s in result["sources"]]
+    logger.info("[7/7] Generate: %d chunks in, cited %s, in %.2fs",
+                len(generation_chunks), cited or "none", timings["generate_s"])
+    if not cited:
+        logger.warning("Answer cites no sources (a refusal, or the model omitted citations).")
+
+    timings["total_s"] = time.perf_counter() - t_pipeline
+
+    llm_usage = {"hyde": hyde["llm"], "generation": result.get("llm")}
+    total_tokens = sum((u or {}).get("total_tokens") or 0 for u in llm_usage.values())
+    costs = [(u or {}).get("cost_usd") for u in llm_usage.values()]
+    total_cost = sum(costs) if all(c is not None for c in costs) else None
+    logger.info("Pipeline done in %.2fs: tokens=%d cost_usd=%s trace_id=%s",
+                timings["total_s"], total_tokens,
+                f"{total_cost:.6f}" if total_cost is not None else "n/a", trace_id or "-")
 
     result["contexts"]          = [c["text"] for c in generation_chunks]   # Session 10
     result["hyde_passage"]      = hyde_passage
     result["rrf_pool_size"]     = len(rrf_pool)
     result["reranked_count"]    = len(reranked)
     result["final_chunk_count"] = len(deduped)
-
-    if verbose:
-        print(f"\n{'─'*60}")
-        print("ANSWER:")
-        print(f"{'─'*60}")
-        print(result["answer"])
-        print(f"\nSources cited:")
-        for s in result["sources"]:
-            print(f"  [SOURCE {s['source_num']}] {s['file_name']} — Page {s['page_number']}")
-
+    result["trace_id"]          = trace_id
+    result["debug"] = {
+        "trace_id": trace_id,
+        "hyde_passage": hyde_passage,
+        "counts": {
+            "dense": len(dense_results),
+            "bm25": len(bm25_results),
+            "dense_bm25_overlap": overlap,
+            "rrf_pool": len(rrf_pool),
+            "reranked": len(reranked),
+            "after_dedup": len(deduped),
+            "dedup_removed": removed,
+            "generation_chunks": len(generation_chunks),
+            "cited": len(cited),
+        },
+        "dense": [_chunk_summary(c, "score") for c in dense_results],
+        "bm25": [_chunk_summary(c, "score") for c in bm25_results],
+        "rrf_pool": [_chunk_summary(c, "rrf_score") for c in rrf_pool],
+        "reranked": reranked_summary,
+        "timings_s": {k: round(v, 3) for k, v in timings.items()},
+        "llm": llm_usage,
+        "total_tokens": total_tokens,
+        "total_cost_usd": total_cost,
+    }
     return result
+
+
+# --- small helpers for logs and the debug payload ---------------------------
+
+def _chunk_keys(results: list) -> set:
+    """Identity of each chunk: (file, page, chunk index), as used by RRF."""
+    return {
+        (r["metadata"].get("file_name"), r["metadata"].get("page_number"), r["metadata"].get("chunk_index"))
+        for r in results
+    }
+
+
+def _cite(c: dict) -> str:
+    """Short label for a chunk, e.g. 'infosys-ar-26.pdf p.80 c2'."""
+    m = c["metadata"]
+    return f"{m.get('file_name')} p.{m.get('page_number')} c{m.get('chunk_index')}"
+
+
+def _chunk_summary(c: dict, score_key: str) -> dict:
+    """JSON-safe summary of a chunk for the debug payload (no full text)."""
+    m = c["metadata"]
+    score = c.get(score_key)
+    return {
+        "rank": c.get("rank"),
+        "file_name": m.get("file_name"),
+        "page_number": m.get("page_number"),
+        "chunk_index": m.get("chunk_index"),
+        score_key: round(float(score), 6) if score is not None else None,
+    }

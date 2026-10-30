@@ -1,8 +1,18 @@
 """
-Local RAGAS-equivalent evaluation for the Deep Research RAG pipeline.
+LEGACY (kept for reference). Superseded by src/evaluation/eval_v2.py and
+metrics_v2.py, which use page-labelled questions in data/eval/questions_v2.json.
 
-Computes all four metrics using models already loaded in the pipeline.
-Zero external API calls during the scoring phase.
+Local RAGAS-style evaluation for the Deep Research RAG pipeline.
+
+These are custom implementations of the four RAGAS metric ideas. The
+`ragas` library itself is NOT used. Scoring uses models already loaded in
+the pipeline, with zero external API calls during the scoring phase.
+
+Known limitation: context precision and context recall score the reference
+answer against each chunk with the cross-encoder and a permissive threshold
+(-1.0). They measure topical relevance, not whether a chunk contains the
+answer, so they should not be read as retrieval accuracy. Page-labelled
+retrieval metrics are planned to replace them.
 
 Metric implementations:
   Faithfulness      — cross-encoder: is each answer sentence entailed by context?
@@ -13,13 +23,17 @@ Metric implementations:
 
 import csv
 import json
+import logging
 import re
 import time
 from typing import Any, Dict, List
 
 import numpy as np
 
+from src.observability.logging_config import new_request_id, setup_logging
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
+
+logger = logging.getLogger(__name__)
 
 
 def split_sentences(text: str) -> List[str]:
@@ -148,25 +162,34 @@ def collect_pipeline_outputs(
     ground_truth: List[Dict[str, str]],
     resources: Dict[str, Any],
     sleep_seconds: int = 15,
-    verbose: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Run every question through the live RAG pipeline.
 
-    sleep_seconds between calls avoids hitting Groq's TPM limit on the
-    generation model (compound-beta-mini has 8,000 TPM).
+    sleep_seconds between calls keeps the run under Groq's per-minute
+    token limits. Each question gets its own request ID, and its trace is
+    tagged "evaluation" so evaluation runs can be filtered in LangSmith.
     """
     rows = []
     for idx, item in enumerate(ground_truth, start=1):
         question  = item["question"]
         reference = item["reference"]
-        print(f"  [{idx}/{len(ground_truth)}] {question[:70]}")
-        result = run_pipeline(question, resources, verbose=verbose)
+        request_id = new_request_id()
+        logger.info("[%d/%d] %s", idx, len(ground_truth), question[:70])
+        result = run_pipeline(
+            question,
+            resources,
+            langsmith_extra={
+                "metadata": {"request_id": request_id, "entrypoint": "evaluation", "question_index": idx},
+                "tags": ["evaluation"],
+            },
+        )
         rows.append({
             "question":  question,
             "answer":    result["answer"],
             "contexts":  result.get("contexts", []),
             "reference": reference,
+            "trace_id":  result.get("trace_id"),
         })
         if idx < len(ground_truth):
             time.sleep(sleep_seconds)
@@ -186,6 +209,7 @@ def score_all(rows: List[Dict[str, Any]], resources: Dict[str, Any]) -> List[Dic
             "answer_relevancy":  compute_answer_relevancy(row["question"], row["answer"], embed_model),
             "context_precision": compute_context_precision(row["reference"], row["contexts"], reranker),
             "context_recall":    compute_context_recall(row["reference"],   row["contexts"], reranker),
+            "trace_id":          row.get("trace_id"),
         })
     return scored
 
@@ -200,55 +224,61 @@ def _bar(val: float, width: int = 20) -> str:
     return "[" + "█" * filled + "░" * (width - filled) + "]"
 
 
-def print_results(scored: List[Dict[str, Any]]) -> None:
-    print("\n" + "=" * 80)
-    print("PER-QUESTION SCORES")
-    print("=" * 80)
+def log_results(scored: List[Dict[str, Any]]) -> None:
+    """Log per-question and aggregate scores at INFO level."""
+    logger.info("=" * 80)
+    logger.info("PER-QUESTION SCORES")
+    logger.info("=" * 80)
     for row in scored:
         q = row["question"]
-        print(f"\nQ: {q[:55] + '...' if len(q) > 55 else q}")
+        logger.info("Q: %s", q[:55] + "..." if len(q) > 55 else q)
         for m in METRICS:
             val = row.get(m)
             if val is not None and val == val:
-                print(f"  {m:<22} {val:.3f}  {_bar(val)}")
+                logger.info("  %-22s %.3f  %s", m, val, _bar(val))
             else:
-                print(f"  {m:<22} N/A")
+                logger.info("  %-22s N/A", m)
 
-    print("\n" + "=" * 80)
-    print("AGGREGATE SCORES (mean across all questions)")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info("AGGREGATE SCORES (mean across all questions)")
+    logger.info("=" * 80)
     for m in METRICS:
         vals = [r[m] for r in scored if r.get(m) is not None and r.get(m) == r.get(m)]
         if vals:
             mean = sum(vals) / len(vals)
-            print(f"  {m:<22} {mean:.3f}  {_bar(mean)}")
+            logger.info("  %-22s %.3f  %s", m, mean, _bar(mean))
         else:
-            print(f"  {m:<22} N/A")
+            logger.info("  %-22s N/A", m)
+
+
+# Old name, kept so existing callers keep working.
+print_results = log_results
 
 
 def save_csv(scored: List[Dict[str, Any]], path: str = "data/ragas_results.csv") -> None:
-    fields = ["question", "answer"] + METRICS
+    fields = ["question", "answer"] + METRICS + ["trace_id"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         for row in scored:
             writer.writerow({k: row.get(k, "") for k in fields})
-    print(f"\nResults saved to {path}")
+    logger.info("Results saved to %s", path)
 
 
 def run_evaluation(ground_truth_path: str = "data/ground_truth.json") -> None:
-    print("Loading pipeline resources...")
+    setup_logging()
+    logger.info("Loading pipeline resources...")
     resources = load_resources()
 
-    print(f"\nLoading ground truth from {ground_truth_path}...")
+    logger.info("Loading ground truth from %s...", ground_truth_path)
     ground_truth = load_ground_truth(ground_truth_path)
-    print(f"Loaded {len(ground_truth)} questions.")
+    logger.info("Loaded %d questions.", len(ground_truth))
 
-    print(f"\nRunning pipeline on all questions (15s sleep between calls)...")
-    rows = collect_pipeline_outputs(ground_truth, resources, sleep_seconds=15, verbose=False)
+    logger.info("Running pipeline on all questions (15s sleep between calls)...")
+    rows = collect_pipeline_outputs(ground_truth, resources, sleep_seconds=15)
 
-    print("\nScoring with local metrics (no API calls)...")
+    logger.info("Scoring with local metrics (no API calls)...")
     scored = score_all(rows, resources)
 
-    print_results(scored)
+    log_results(scored)
     save_csv(scored)

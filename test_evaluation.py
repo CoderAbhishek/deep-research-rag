@@ -1,24 +1,31 @@
 """
-RAGAS evaluation test.
+LEGACY evaluation runner (local RAGAS-style metrics, 13-question set).
+Use the v2 evaluation instead:  python -m src.evaluation.eval_v2
+
+Evaluation runner (local RAGAS-style metrics).
 
 Run from the project root:
     python test_evaluation.py
 
 Prerequisites:
-    pip install ragas==0.2.14 datasets langchain-openai
-    GROQ_API_KEY set in .env
-    ChromaDB populated (run test_pipeline.py from Session 5 first if needed)
+    GROQ_API_KEY set in .env (the pipeline calls Groq for HyDE and generation)
+    ChromaDB populated at ./chroma_db
+    The `ragas` library is NOT required: metrics are implemented locally in
+    src/evaluation/evaluator.py.
 
 What this script does:
     1. Loads pipeline resources once (warm startup)
-    2. Loads 13 hand-written QA triples from data/ground_truth.json
-    3. Runs the full RAG pipeline on every question
-    4. Scores the results with four RAGAS metrics:
+    2. Loads the QA pairs from data/ground_truth.json
+    3. Runs the full RAG pipeline on every question (15 s pause between calls)
+    4. Scores the results locally (no API calls during scoring):
            faithfulness, answer_relevancy, context_precision, context_recall
     5. Prints a per-question breakdown and aggregate scores
-    6. Saves full results to data/ragas_results.csv
+    6. Saves results to data/ragas_results.csv
 
-Expected runtime: ~5–8 minutes (13 pipeline calls + RAGAS LLM critic calls)
+Expected runtime: at least 3 minutes for 13 questions (12 pauses of 15 s
+plus 13 pipeline calls).
+
+Known limitation: see the note at the top of src/evaluation/evaluator.py.
 """
 
 import os

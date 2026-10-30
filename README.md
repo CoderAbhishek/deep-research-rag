@@ -1,8 +1,10 @@
 # Deep Research RAG
 
-A production-grade Retrieval-Augmented Generation system for dense business and research document corpora. Designed for research analysts and strategy consultants who need evidence-grounded, cited answers across multi-document collections — annual reports, DRHPs, industry reports, expert transcripts.
+A Retrieval-Augmented Generation (RAG) system for dense business and research document corpora. Designed for research analysts and strategy consultants who need evidence-grounded, cited answers across multi-document collections — annual reports, DRHPs, industry reports, expert transcripts.
 
-**Live demo:** [deep-research-rag-production.up.railway.app](https://deep-research-rag-production.up.railway.app)
+**Current corpus:** four Infosys FY2025-26 documents (integrated annual report, AGM transcript, additional information, CSR projects): 444 pages of text, 3,439 chunks.
+
+**Live demo:** currently offline. Run it locally with the Quickstart below.
 
 ---
 
@@ -10,7 +12,7 @@ A production-grade Retrieval-Augmented Generation system for dense business and 
 
 Analysts spend hours manually reading documents to locate specific data points, cross-reference claims across sources, and build evidence-grounded views. Keyword search (Ctrl+F) is shallow. A basic chatbot is unreliable — it hallucinates and cannot cite sources.
 
-This system solves that with a 7-stage pipeline that retrieves the most relevant context before generating an answer, and cites every claim to a specific source document and page number.
+This system solves that with a 7-stage pipeline that retrieves the most relevant context before generating an answer. The model is instructed to cite each claim to a source document and page, and the response lists only the sources the answer actually cites.
 
 ---
 
@@ -53,15 +55,15 @@ User Query
                 │
                 ▼
 ┌─────────────────────────────────────┐
-│  Stage 6: Deduplication             │
-│  Remove near-duplicate chunks       │
-│  before passing to generation       │
+│  Stage 6: Page-level deduplication  │
+│  Keep the highest-scoring chunk     │
+│  per page before generation         │
 └───────────────┬─────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────┐
 │  Stage 7: LLM Generation            │
-│  Groq compound-beta-mini            │
+│  Groq openai/gpt-oss-20b            │
 │  Grounded answer + inline citations │
 └───────────────┬─────────────────────┘
                 │
@@ -81,27 +83,88 @@ User Query
 | Dense embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Sparse retrieval | rank-bm25 |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| LLM generation | Groq API (compound-beta-mini) |
+| LLM (HyDE + generation) | Groq API (openai/gpt-oss-20b) |
 | Containerisation | Docker + Docker Compose |
-| Deployment | Railway (Dockerised, Southeast Asia region) |
-| Evaluation | Local RAGAS-equivalent metrics (no API calls) |
+| Deployment | Docker image (previously deployed on Railway; currently offline) |
+| Evaluation | Custom RAGAS-style metrics (not the `ragas` library); being rebuilt, see below |
+| Observability | Python `logging` with request IDs, LangSmith tracing, per-stage timings, token and cost logging |
 
 ---
 
-## Evaluation Results
+## Evaluation
 
-Evaluated on 13 ground-truth question-answer pairs across the ingested corpus.
+**Status: being rebuilt.**
 
-| Metric | Score | What it means |
-|---|---|---|
-| Context Precision | **0.991** | Retrieved chunks are almost entirely relevant |
-| Context Recall | **1.000** | Every reference sentence is covered by the retrieved context |
-| Faithfulness | 0.385 | See note below |
-| Answer Relevancy | 0.462 | Correlates with faithfulness — same root cause |
+The first evaluation used 13 hand-written questions and locally implemented RAGAS-style metrics (faithfulness, answer relevancy, context precision, context recall). A later audit found it could not support conclusions about quality:
 
-**Note on Faithfulness:** The 0.385 is a measurement artefact, not hallucination. The cross-encoder faithfulness metric penalises terse one-liner answers (produced for numerical fact queries) because short answer sentences score in a different logit range than full sentences when paired with long context paragraphs. Conceptual questions — where the model produces multi-sentence answers — all scored 1.000. Fix: modify the generation prompt to require full-sentence answers for all query types.
+- Most reference answers refer to FY2023, while the corpus covers FY2025-26, and some reference figures do not appear in the documents at all.
+- Context precision and recall compared each chunk with the reference answer using a cross-encoder and a lenient threshold. They measured topical similarity, not whether the answer was present, and scored perfect recall even on questions the system declined to answer.
+- Faithfulness scored 0 on the 8 questions where the system declined to answer, which explains the low average (0.385).
+
+**Evaluation v2 (in progress).** `data/eval/questions_v2.json` holds 41 seed questions written from the FY2025-26 documents. Every reference figure was checked against the indexed text, and each question records:
+
+- the pages that contain the answer (`relevant_pages`; any one of them counts),
+- strings the answer must contain (`must_include`, with alternatives),
+- what the system should do (`answer`, `refuse` or `answer_or_refuse`),
+- its type (numbers, percentages, tables, comparisons, definitions, people, policy, cross-document conflicts, unanswerable, false premise, prompt injection, off-topic) and phrasing (document vocabulary, paraphrase, abbreviation, conversational).
+
+The set is split 24 dev / 17 test (stratified, fixed seed) before any results exist. Error analysis and tuning use the dev split only; the test split is run only to report numbers.
+
+```bash
+python -m src.evaluation.eval_v2                 # dev split
+python -m src.evaluation.eval_v2 --limit 3       # quick smoke run
+python -m tests.test_metrics_v2                  # metric unit tests, no API key needed
+```
+
+Comparing runs and fixing labels (no API calls needed):
+
+```bash
+python -m src.evaluation.rescore data/eval/runs/<run_id>          # re-score a saved run with the current labels
+python -m src.evaluation.compare_runs --baseline RUN1 RUN2 --candidate RUN3 RUN4 --name change-a \
+    --regression data/eval/regression_ids.json                    # per-question fixed / regressed report
+```
+
+Every change is run twice and compared question by question against two baseline runs: between two identical baseline runs, 7 of 24 questions flipped pass / fail, so a single before / after run cannot show whether a change helped.
+
+Each run writes `data/eval/runs/<run_id>/results.csv` (one row per question: answer checks, whether the relevant page was found at each stage, where it was lost, citations, latency, tokens, cost, trace ID, and empty columns for manual review) and `summary.json` (configuration and aggregate metrics). Metrics are deterministic: hit@k and MRR@k from page labels, answer correctness from `must_include`, correct and false refusal rates, citation precision. Baseline results will be published here after the first dev run and error analysis; the set will grow to 60-80 questions based on the failures observed.
+
+## Known Limitations
+
+- **Tables and charts:** PDF text extraction flattens tables, so column headings can end up separated from their numbers. Numeric questions over tables are the weakest area.
+- **Reranker domain:** the cross-encoder (`ms-marco-MiniLM-L-6-v2`) was trained on web-search data, not financial reports, and can over-rank pages dense with matching terms (for example, a page listing office locations for a geography question).
+- **Output checks:** grounding and citation rules are enforced through the system prompt. Answers are not yet validated against the source text in code.
+- **Access:** no authentication or rate limiting. This is a portfolio project, not a hardened service.
 
 ---
+
+## Observability
+
+**Logging.** Every module logs through Python's `logging`; entry points call `setup_logging()` once at startup. Set `LOG_LEVEL` in `.env` (`INFO` by default; `DEBUG` adds the HyDE passage and every candidate chunk). Every line carries the request ID:
+
+```
+14:02:11 INFO    [3f9c1a2b7d4e] src.pipeline.rag_pipeline: [5/7] Rerank: scored 20 pairs, kept 5 (top score 2.702) in 0.84s
+```
+
+Each query logs one line per stage (what it produced and how long it took), one line per LLM call (model, latency, prompt and completion tokens, `finish_reason`, estimated cost), a warning if an answer cites no sources or an LLM output looks truncated, and a final summary with total time, tokens and the LangSmith trace ID.
+
+**Tracing (LangSmith).** Set `LANGCHAIN_TRACING_V2=true`, `LANGSMITH_API_KEY` and `LANGCHAIN_PROJECT` in `.env`. The startup log says whether tracing is on. Each question produces one trace:
+
+```
+RAG Pipeline
+├── 1. HyDE Generation
+│   └── groq.chat (hyde)          LLM run: messages, output, tokens
+├── 2. Dense Retrieval
+├── 3. BM25 Retrieval
+├── 4. RRF Fusion
+├── 5. Cross-Encoder Reranking
+├── 6. Page Deduplication
+└── 7. LLM Generation
+    └── groq.chat (generation)    LLM run: messages, output, tokens
+```
+
+Each trace carries `request_id` and `entrypoint` (`api`, `demo-ui` or `evaluation`) metadata and a matching tag, so a log line, an API response and a trace can be matched by the same ID.
+
+**Debug payload.** `POST /query` with `"verbose": true` returns a `debug` object: stage counts, the RRF candidate pool, the reranked top 5 with cross-encoder scores, per-stage timings, and LLM usage and estimated cost.
 
 ## Project Structure
 
@@ -109,13 +172,14 @@ Evaluated on 13 ground-truth question-answer pairs across the ingested corpus.
 deep-research-rag/
 ├── app.py               # Portfolio demo UI (FastAPI + dark-mode HTML, port 7860)
 ├── src/
-│   ├── ingestion/       # PDF parsing, chunking, embedding, ChromaDB ingest
-│   ├── retrieval/       # Dense retriever, BM25 retriever, RRF fusion
-│   ├── reranking/       # Cross-encoder reranker
-│   ├── generation/      # HyDE, LLM generation, citation extraction
-│   ├── pipeline/        # Full 7-stage pipeline orchestration
-│   ├── evaluation/      # Local RAGAS-equivalent metrics
-│   └── api/             # FastAPI application
+│   ├── ingestion/       # loader.py (PDF parsing), chunker.py, embedder.py (ChromaDB ingest)
+│   ├── retrieval/       # dense.py, sparse.py (BM25), hybrid.py (RRF), query.py (HyDE), reranker.py
+│   ├── generation/      # generator.py (grounded answer + citation parsing)
+│   ├── pipeline/        # rag_pipeline.py (7-stage orchestration)
+│   ├── evaluation/      # evaluator.py (local RAGAS-style metrics)
+│   ├── llm/             # groq_client.py (one traced, logged wrapper for every Groq call)
+│   ├── observability/   # logging_config.py (logging + request IDs), tracing.py (LangSmith status)
+│   └── api/             # main.py (FastAPI application)
 ├── chroma_db/           # Pre-populated vector store (committed to repo)
 ├── data/
 │   └── ground_truth.json
@@ -131,7 +195,7 @@ deep-research-rag/
 The fastest way to run the system locally:
 
 ```bash
-# 1. Clone and install
+# 1. Clone and install (Python 3.11)
 git clone https://github.com/CoderAbhishek/deep-research-rag.git
 cd deep-research-rag
 pip install -r requirements.txt
@@ -210,15 +274,24 @@ Runs the full 7-stage pipeline.
 **Response:**
 ```json
 {
-  "answer": "Infosys Cobalt is a set of services, solutions and platforms...",
+  "answer": "Infosys Cobalt is a set of services, solutions and platforms... [SOURCE 1]",
   "sources": [
     {"source_num": 1, "file_name": "infosys-ar-26.pdf", "page_number": 22}
   ],
+  "retrieved_sources": [
+    {"source_num": 1, "file_name": "infosys-ar-26.pdf", "page_number": 22},
+    {"source_num": 2, "file_name": "agm-2026-transcript.pdf", "page_number": 12}
+  ],
   "query": "What is Infosys Cobalt?",
   "num_chunks": 4,
-  "model": "compound-beta-mini"
+  "model": "openai/gpt-oss-20b",
+  "request_id": "3f9c1a2b7d4e",
+  "trace_id": "1f0b6c2e-0000-0000-0000-000000000000",
+  "debug": null
 }
 ```
+
+`sources` lists only the sources the answer cites (empty if the system declines to answer). `retrieved_sources` lists every chunk passed to the model. `request_id` is also sent as the `X-Request-ID` header and appears in every server log line for the request. `trace_id` is the LangSmith trace ID (null when tracing is off). With `\"verbose\": true`, `debug` contains the pipeline debug payload.
 
 **Errors:**
 - `422` — empty or missing `question` field

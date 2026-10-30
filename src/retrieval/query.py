@@ -1,51 +1,46 @@
 """
 query.py — Query engineering: rewriting, multi-query generation, and HyDE.
 
-All LLM calls use Groq (hosted open-weight model) via the groq Python client.
-API key is loaded from the GROQ_API_KEY environment variable in .env.
+All LLM calls go through the shared wrapper src/llm/groq_client.py, which
+reads GROQ_API_KEY from the environment, traces each call in LangSmith and
+logs model, latency, token usage, finish_reason and estimated cost.
 Never hardcode credentials.
 """
 
-import os
 from typing import List
-from groq import Groq
+
 from dotenv import load_dotenv
+
+from src.llm.groq_client import LLMResult, chat
+
 DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 load_dotenv()
 
 
-def _get_groq_client() -> Groq:
+def _call_llm(system_prompt: str, user_prompt: str, model: str = DEFAULT_MODEL,
+              purpose: str = "query") -> LLMResult:
     """
-    Instantiate the Groq client.
-    Reads GROQ_API_KEY from environment (loaded from .env by load_dotenv()).
-    Raises a clear error if the key is missing rather than a cryptic auth failure.
-    """
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise ValueError(
-            "GROQ_API_KEY not found. Add it to your .env file: GROQ_API_KEY=your_key_here"
-        )
-    return Groq(api_key=api_key)
+    Single LLM call through the shared Groq wrapper.
 
-
-def _call_llm(client: Groq, system_prompt: str, user_prompt: str, model: str = DEFAULT_MODEL) -> str:
+    Returns an LLMResult: .text is the stripped output; the other fields
+    (tokens, latency, finish_reason, cost) are used for observability.
+    purpose labels the call in logs and in the LangSmith trace.
+    temperature=0.3: focused, near-deterministic rewrites.
+    max_tokens=512: query rewrites and HyDE passages are short.
     """
-    Single LLM call via Groq. Returns the text content of the first choice.
-
-    model: DEFAULT_MODEL — free tier, fast (~500ms), sufficient for query rewriting.
-    For higher quality at the cost of latency: "llama-3.3-70b-versatile".
-    """
-    response = client.chat.completions.create(
-        model=model,
+    result = chat(
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.3,       # Low temperature: we want focused, deterministic rewrites
-        max_tokens=512,        # Query rewrites are short; no need for long output
+        model=model,
+        temperature=0.3,
+        max_tokens=512,
+        purpose=purpose,
     )
-    return response.choices[0].message.content.strip()
+    result.text = result.text.strip()
+    return result
 
 
 def rewrite_query(query: str, model: str = DEFAULT_MODEL) -> str:
@@ -58,7 +53,6 @@ def rewrite_query(query: str, model: str = DEFAULT_MODEL) -> str:
 
     Returns a single string: the rewritten query.
     """
-    client = _get_groq_client()
     system_prompt = (
         "You are a retrieval query optimiser for a financial document RAG system. "
         "Your task is to rewrite a user's question into a concise search query that "
@@ -69,7 +63,7 @@ def rewrite_query(query: str, model: str = DEFAULT_MODEL) -> str:
         "Output ONLY the rewritten query. No explanation, no preamble."
     )
     user_prompt = f"Original question: {query}\n\nRewritten search query:"
-    return _call_llm(client, system_prompt, user_prompt, model)
+    return _call_llm(system_prompt, user_prompt, model, purpose="rewrite").text
 
 
 def generate_multi_query(query: str, n: int = 3, model: str = DEFAULT_MODEL) -> List[str]:
@@ -82,7 +76,6 @@ def generate_multi_query(query: str, n: int = 3, model: str = DEFAULT_MODEL) -> 
 
     Returns a list of N strings (one per variant).
     """
-    client = _get_groq_client()
     system_prompt = (
         "You are a retrieval query diversifier for a financial document RAG system. "
         "Generate alternative phrasings of a user's question. Each variant should use "
@@ -91,7 +84,7 @@ def generate_multi_query(query: str, n: int = 3, model: str = DEFAULT_MODEL) -> 
         "Output ONLY the variants, numbered 1. 2. 3. No other text."
     )
     user_prompt = f"Original question: {query}\n\n{n} alternative phrasings:"
-    raw = _call_llm(client, system_prompt, user_prompt, model)
+    raw = _call_llm(system_prompt, user_prompt, model, purpose="multi_query").text
 
     variants = []
     for line in raw.split("\n"):
@@ -106,7 +99,7 @@ def generate_multi_query(query: str, n: int = 3, model: str = DEFAULT_MODEL) -> 
     return variants[:n]   # Safety cap — return at most n variants
 
 
-def generate_hyde(query: str, model: str = DEFAULT_MODEL) -> str:
+def generate_hyde_result(query: str, model: str = DEFAULT_MODEL) -> LLMResult:
     """
     Generate a Hypothetical Document Embedding (HyDE) passage.
 
@@ -115,11 +108,11 @@ def generate_hyde(query: str, model: str = DEFAULT_MODEL) -> str:
     vocabulary. Embedding the passage instead of the query closes the query-document
     embedding gap.
 
-    Returns a single string: the hypothetical document passage (~100-150 words).
+    Returns an LLMResult: .text is the hypothetical passage (~80-120 words);
+    the other fields carry token usage, latency and finish_reason.
     The passage may be factually wrong — that is expected and acceptable.
     It only needs to use the right vocabulary to improve retrieval.
     """
-    client = _get_groq_client()
     system_prompt = (
         "You are simulating a passage from an Indian corporate annual report. "
         "Write a short 80-120 word excerpt that would directly answer the user's question. "
@@ -130,4 +123,9 @@ def generate_hyde(query: str, model: str = DEFAULT_MODEL) -> str:
         "Output ONLY the passage. No preamble, no 'here is a passage'."
     )
     user_prompt = f"Question: {query}\n\nHypothetical annual report excerpt:"
-    return _call_llm(client, system_prompt, user_prompt, model)
+    return _call_llm(system_prompt, user_prompt, model, purpose="hyde")
+
+
+def generate_hyde(query: str, model: str = DEFAULT_MODEL) -> str:
+    """Return only the HyDE passage text (kept for the experiment scripts)."""
+    return generate_hyde_result(query, model).text
