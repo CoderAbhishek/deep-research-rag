@@ -68,6 +68,7 @@
     "hyde_cut_off": 0,
     "generation_cut_off": 0,
     "hyde_fallback": 0,
+    "fewer_than_5_chunks": 8,
     "cost_usd_total": 0.004032
   },
   "by_group": {
@@ -111,6 +112,7 @@
       "hyde_cut_off": 0,
       "generation_cut_off": 0,
       "hyde_fallback": 0,
+      "fewer_than_5_chunks": 3,
       "cost_usd_total": 0.000476
     },
     "numeric": {
@@ -154,6 +156,7 @@
       "hyde_cut_off": 0,
       "generation_cut_off": 0,
       "hyde_fallback": 0,
+      "fewer_than_5_chunks": 3,
       "cost_usd_total": 0.002764
     },
     "text": {
@@ -196,6 +199,7 @@
       "hyde_cut_off": 0,
       "generation_cut_off": 0,
       "hyde_fallback": 0,
+      "fewer_than_5_chunks": 2,
       "cost_usd_total": 0.000792
     }
   }

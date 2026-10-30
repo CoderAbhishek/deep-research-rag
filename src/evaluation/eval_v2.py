@@ -62,6 +62,7 @@ CSV_COLUMNS = [
     "dense_rr5", "bm25_rr5", "rrf_rr5", "rerank_rr5",
     "relevant_pages", "final_pages", "cited_pages", "citation_precision", "any_citation_relevant",
     "dense_pages", "bm25_pages", "rrf_pages", "rerank_pages",
+    "rrf_chunks", "rerank_chunks", "final_chunks", "generation_chunks", "dedup_removed_pool",
     "dedup_removed", "dense_bm25_overlap",
     "latency_s", "total_tokens", "cost_usd", "hyde_finish_reason", "generation_finish_reason",
     "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars", "hyde_fallback",
@@ -92,6 +93,11 @@ def _pages(items: List[Dict[str, Any]]) -> List[m.PageKey]:
 def _fmt_pages(pages: List[m.PageKey]) -> str:
     """Unique pages, in order, as 'file pN; file pM' (used for display)."""
     return "; ".join(f"{f} p{p}" for f, p in dict.fromkeys(pages))
+
+
+def _fmt_chunks(items: List[Dict[str, Any]]) -> str:
+    """Chunk-level identity in rank order: 'file pN cK; ...' (diagnoses which chunk of a page was used)."""
+    return "; ".join(f"{i.get('file_name')} p{i.get('page_number')} c{i.get('chunk_index')}" for i in items)
 
 
 def _fmt_ranked(pages: List[m.PageKey]) -> str:
@@ -190,9 +196,31 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "bm25_pages": _fmt_ranked(stage_pages["bm25"]),
         "rrf_pages": _fmt_ranked(stage_pages["rrf"]),
         "rerank_pages": _fmt_ranked(stage_pages["rerank"]),
+        # Chunk-level lists (change B): which chunk of each page was kept.
+        "rrf_chunks": _fmt_chunks(debug["rrf_pool"]),
+        "rerank_chunks": _fmt_chunks(debug.get("reranked_all") or debug["reranked"]),
+        "final_chunks": _fmt_chunks(debug.get("final", [])),
+        "generation_chunks": debug["counts"].get("generation_chunks"),
+        "dedup_removed_pool": debug["counts"].get("dedup_removed_pool"),
         "trace_id": result.get("trace_id") or "",
     })
     return row
+
+
+def _chunks_sent(r: Dict[str, Any]) -> Optional[float]:
+    """
+    Chunks sent to the model. Runs before change B have no generation_chunks
+    column; there it is 5 minus the duplicates removed from the top 5
+    (top_k_generate was 5 in every run so far).
+    """
+    for key, fn in (("generation_chunks", lambda v: v), ("dedup_removed", lambda v: 5 - v)):
+        v = r.get(key)
+        if v not in (None, ""):
+            try:
+                return fn(float(v))
+            except (TypeError, ValueError):
+                pass
+    return None
 
 
 def summarise(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -223,6 +251,7 @@ def summarise(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "hyde_cut_off": sum(1 for r in ok if r.get("hyde_finish_reason") == "length"),
         "generation_cut_off": sum(1 for r in ok if r.get("generation_finish_reason") == "length"),
         "hyde_fallback": sum(1 for r in ok if r.get("hyde_fallback") is True),
+        "fewer_than_5_chunks": sum(1 for r in ok if (_chunks_sent(r) or 5) < 5),
         "cost_usd_total": round(sum(r["cost_usd"] for r in ok if r["cost_usd"] is not None), 6) if ok else None,
     }
 
