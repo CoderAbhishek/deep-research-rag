@@ -1,4 +1,7 @@
 """
+LEGACY (kept for reference). Superseded by src/evaluation/eval_v2.py and
+metrics_v2.py, which use page-labelled questions in data/eval/questions_v2.json.
+
 Local RAGAS-style evaluation for the Deep Research RAG pipeline.
 
 These are custom implementations of the four RAGAS metric ideas. The

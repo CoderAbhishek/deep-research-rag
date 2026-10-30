@@ -101,7 +101,22 @@ The first evaluation used 13 hand-written questions and locally implemented RAGA
 - Context precision and recall compared each chunk with the reference answer using a cross-encoder and a lenient threshold. They measured topical similarity, not whether the answer was present, and scored perfect recall even on questions the system declined to answer.
 - Faithfulness scored 0 on the 8 questions where the system declined to answer, which explains the low average (0.385).
 
-A new evaluation set is in progress: 60-80 questions with page-level labels, built from observed failures and split into a development set and a held-out test set. Results will be published here.
+**Evaluation v2 (in progress).** `data/eval/questions_v2.json` holds 41 seed questions written from the FY2025-26 documents. Every reference figure was checked against the indexed text, and each question records:
+
+- the pages that contain the answer (`relevant_pages`; any one of them counts),
+- strings the answer must contain (`must_include`, with alternatives),
+- what the system should do (`answer`, `refuse` or `answer_or_refuse`),
+- its type (numbers, percentages, tables, comparisons, definitions, people, policy, cross-document conflicts, unanswerable, false premise, prompt injection, off-topic) and phrasing (document vocabulary, paraphrase, abbreviation, conversational).
+
+The set is split 24 dev / 17 test (stratified, fixed seed) before any results exist. Error analysis and tuning use the dev split only; the test split is run only to report numbers.
+
+```bash
+python -m src.evaluation.eval_v2                 # dev split
+python -m src.evaluation.eval_v2 --limit 3       # quick smoke run
+python -m tests.test_metrics_v2                  # metric unit tests, no API key needed
+```
+
+Each run writes `data/eval/runs/<run_id>/results.csv` (one row per question: answer checks, whether the relevant page was found at each stage, where it was lost, citations, latency, tokens, cost, trace ID, and empty columns for manual review) and `summary.json` (configuration and aggregate metrics). Metrics are deterministic: hit@k and MRR@k from page labels, answer correctness from `must_include`, correct and false refusal rates, citation precision. Baseline results will be published here after the first dev run and error analysis; the set will grow to 60-80 questions based on the failures observed.
 
 ## Known Limitations
 

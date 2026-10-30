@@ -248,8 +248,9 @@ def run_pipeline(
             'reranked_count'   — how many candidates went to the cross-encoder
             'final_chunk_count'— chunks after deduplication
             'trace_id'         - LangSmith trace ID (None when tracing is off)
-            'debug'            - stage counts, candidates and scores, per-stage
-                                 timings, LLM usage and estimated cost
+            'debug'            - stage counts, candidates and scores (dense, BM25,
+                                 RRF pool, reranked), per-stage timings, LLM usage
+                                 and estimated cost
     """
     t_pipeline = time.perf_counter()
     timings = {}
@@ -367,6 +368,8 @@ def run_pipeline(
             "generation_chunks": len(generation_chunks),
             "cited": len(cited),
         },
+        "dense": [_chunk_summary(c, "score") for c in dense_results],
+        "bm25": [_chunk_summary(c, "score") for c in bm25_results],
         "rrf_pool": [_chunk_summary(c, "rrf_score") for c in rrf_pool],
         "reranked": reranked_summary,
         "timings_s": {k: round(v, 3) for k, v in timings.items()},

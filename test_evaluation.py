@@ -1,4 +1,7 @@
 """
+LEGACY evaluation runner (local RAGAS-style metrics, 13-question set).
+Use the v2 evaluation instead:  python -m src.evaluation.eval_v2
+
 Evaluation runner (local RAGAS-style metrics).
 
 Run from the project root:
