@@ -1,0 +1,256 @@
+{
+  "run_id": "20261101-211351_test",
+  "aborted": null,
+  "config": {
+    "split": "test",
+    "ids": null,
+    "limit": null,
+    "questions_file": "data/eval/questions_v2.json",
+    "question_set_version": "v2.2",
+    "git_commit": "3a91796",
+    "hyde_model": "openai/gpt-oss-20b",
+    "generation_model": "openai/gpt-oss-20b",
+    "hyde_max_tokens": 1024,
+    "hyde_reasoning_effort": "low",
+    "generation_max_tokens": 2048,
+    "generation_reasoning_effort": "low",
+    "embed_model": "all-MiniLM-L6-v2",
+    "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "pool_size": 20,
+    "top_k_rerank": 5,
+    "top_k_generate": 5
+  },
+  "overall": {
+    "questions": 17,
+    "errors": 0,
+    "behaviour_accuracy": 0.5882,
+    "answer_accuracy_answerable": 0.6,
+    "false_refusal_rate_answerable": 0.4,
+    "correct_refusal_rate_should_decline": 0.5,
+    "retrieval": {
+      "hit@20": {
+        "dense": 0.8667,
+        "bm25": 0.7333,
+        "rrf": 1.0
+      },
+      "hit@5": {
+        "dense": 0.6,
+        "bm25": 0.6,
+        "rrf": 0.7333,
+        "rerank": 0.7333,
+        "final": 0.7333
+      },
+      "mrr@5": {
+        "dense": 0.3933,
+        "bm25": 0.2544,
+        "rrf": 0.4722,
+        "rerank": 0.6022
+      }
+    },
+    "lost_at": {
+      "generation": 4,
+      "n/a": 2,
+      "ok": 7,
+      "ok_unlabelled_source": 2,
+      "rerank": 2
+    },
+    "citation_precision": 0.6296,
+    "latency_s": {
+      "p50": 2.301,
+      "p95": 2.906
+    },
+    "timings_p50_s": {
+      "hyde_s": 0.681,
+      "dense_s": 0.101,
+      "bm25_s": 0.031,
+      "rrf_s": 0.002,
+      "rerank_s": 0.901,
+      "dedup_s": 0.002,
+      "generate_s": 0.569,
+      "hyde_llm_s": 0.671,
+      "generation_llm_s": 0.565,
+      "local_s": 1.035
+    },
+    "tokens_mean": 1491.2941,
+    "hyde_cut_off": 0,
+    "generation_cut_off": 0,
+    "hyde_fallback": 0,
+    "answers_with_unsupported_figures": 1,
+    "llm_retries_total": 0,
+    "fewer_than_5_chunks": 0,
+    "cost_usd_total": 0.002878
+  },
+  "by_group": {
+    "decline": {
+      "questions": 2,
+      "errors": 0,
+      "behaviour_accuracy": 0.5,
+      "answer_accuracy_answerable": null,
+      "false_refusal_rate_answerable": null,
+      "correct_refusal_rate_should_decline": 0.5,
+      "retrieval": {
+        "hit@20": {
+          "dense": null,
+          "bm25": null,
+          "rrf": null
+        },
+        "hit@5": {
+          "dense": null,
+          "bm25": null,
+          "rrf": null,
+          "rerank": null,
+          "final": null
+        },
+        "mrr@5": {
+          "dense": null,
+          "bm25": null,
+          "rrf": null,
+          "rerank": null
+        }
+      },
+      "lost_at": {
+        "n/a": 2
+      },
+      "citation_precision": null,
+      "latency_s": {
+        "p50": 2.503,
+        "p95": 2.56
+      },
+      "timings_p50_s": {
+        "hyde_s": 0.909,
+        "dense_s": 0.089,
+        "bm25_s": 0.026,
+        "rrf_s": 0.002,
+        "rerank_s": 0.906,
+        "dedup_s": 0.001,
+        "generate_s": 0.566,
+        "hyde_llm_s": 0.9,
+        "generation_llm_s": 0.539,
+        "local_s": 1.064
+      },
+      "tokens_mean": 1517.5,
+      "hyde_cut_off": 0,
+      "generation_cut_off": 0,
+      "hyde_fallback": 0,
+      "answers_with_unsupported_figures": 1,
+      "llm_retries_total": 0,
+      "fewer_than_5_chunks": 0,
+      "cost_usd_total": 0.000354
+    },
+    "numeric": {
+      "questions": 11,
+      "errors": 0,
+      "behaviour_accuracy": 0.4545,
+      "answer_accuracy_answerable": 0.4545,
+      "false_refusal_rate_answerable": 0.5455,
+      "correct_refusal_rate_should_decline": null,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.9091,
+          "bm25": 0.6364,
+          "rrf": 1.0
+        },
+        "hit@5": {
+          "dense": 0.7273,
+          "bm25": 0.4545,
+          "rrf": 0.6364,
+          "rerank": 0.8182,
+          "final": 0.8182
+        },
+        "mrr@5": {
+          "dense": 0.4455,
+          "bm25": 0.1576,
+          "rrf": 0.3712,
+          "rerank": 0.6848
+        }
+      },
+      "lost_at": {
+        "generation": 4,
+        "ok": 5,
+        "rerank": 2
+      },
+      "citation_precision": 0.8,
+      "latency_s": {
+        "p50": 2.316,
+        "p95": 3.305
+      },
+      "timings_p50_s": {
+        "hyde_s": 0.68,
+        "dense_s": 0.115,
+        "bm25_s": 0.037,
+        "rrf_s": 0.002,
+        "rerank_s": 0.96,
+        "dedup_s": 0.002,
+        "generate_s": 0.564,
+        "hyde_llm_s": 0.669,
+        "generation_llm_s": 0.561,
+        "local_s": 1.13
+      },
+      "tokens_mean": 1518.8182,
+      "hyde_cut_off": 0,
+      "generation_cut_off": 0,
+      "hyde_fallback": 0,
+      "answers_with_unsupported_figures": 0,
+      "llm_retries_total": 0,
+      "fewer_than_5_chunks": 0,
+      "cost_usd_total": 0.001836
+    },
+    "text": {
+      "questions": 4,
+      "errors": 0,
+      "behaviour_accuracy": 1.0,
+      "answer_accuracy_answerable": 1.0,
+      "false_refusal_rate_answerable": 0.0,
+      "correct_refusal_rate_should_decline": null,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.75,
+          "bm25": 1.0,
+          "rrf": 1.0
+        },
+        "hit@5": {
+          "dense": 0.25,
+          "bm25": 1.0,
+          "rrf": 1.0,
+          "rerank": 0.5,
+          "final": 0.5
+        },
+        "mrr@5": {
+          "dense": 0.25,
+          "bm25": 0.5208,
+          "rrf": 0.75,
+          "rerank": 0.375
+        }
+      },
+      "lost_at": {
+        "ok": 2,
+        "ok_unlabelled_source": 2
+      },
+      "citation_precision": 0.4167,
+      "latency_s": {
+        "p50": 2.188,
+        "p95": 2.3
+      },
+      "timings_p50_s": {
+        "hyde_s": 0.757,
+        "dense_s": 0.109,
+        "bm25_s": 0.027,
+        "rrf_s": 0.002,
+        "rerank_s": 0.75,
+        "dedup_s": 0.002,
+        "generate_s": 0.613,
+        "hyde_llm_s": 0.746,
+        "generation_llm_s": 0.61,
+        "local_s": 0.886
+      },
+      "tokens_mean": 1402.5,
+      "hyde_cut_off": 0,
+      "generation_cut_off": 0,
+      "hyde_fallback": 0,
+      "answers_with_unsupported_figures": 0,
+      "llm_retries_total": 0,
+      "fewer_than_5_chunks": 0,
+      "cost_usd_total": 0.000688
+    }
+  }
+}
