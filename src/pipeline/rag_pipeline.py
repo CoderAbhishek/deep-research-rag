@@ -48,6 +48,21 @@ from src.generation.generator import generate_answer
 logger = logging.getLogger(__name__)
 
 
+def _drop_inputs(*names):
+    """
+    LangSmith process_inputs hook: leave heavy or non-JSON arguments out of the trace.
+
+    @traceable records a function's arguments as the run's inputs. `resources`
+    holds the models, the BM25 index, all 3,439 chunks and (change F) the page
+    index, whose (file, page) tuple keys cannot be serialised to JSON: every
+    trace then failed to upload ("keys must be str ... not tuple"). The chunk
+    list alone is the whole corpus, so it should never be sent per trace.
+    """
+    def process(inputs: dict) -> dict:
+        return {k: v for k, v in inputs.items() if k not in names}
+    return process
+
+
 CHROMA_PATH   = "./chroma_db"
 COLLECTION    = "documents"
 EMBED_MODEL   = "all-MiniLM-L6-v2"
@@ -119,7 +134,7 @@ def stage_hyde(query: str) -> dict:
     return {"passage": result.text, "llm": result.stats()}
 
 
-@traceable(name="2. Dense Retrieval")
+@traceable(name="2. Dense Retrieval", process_inputs=_drop_inputs("collection", "embed_model"))
 def stage_dense(hyde_passage: str, collection, embed_model, n_results: int) -> list:
     """
     Stage 2: Dense retrieval using the HyDE passage as the query.
@@ -130,7 +145,7 @@ def stage_dense(hyde_passage: str, collection, embed_model, n_results: int) -> l
     return search_dense(hyde_passage, collection, embed_model, n_results=n_results)
 
 
-@traceable(name="3. BM25 Retrieval")
+@traceable(name="3. BM25 Retrieval", process_inputs=_drop_inputs("bm25", "chunks"))
 def stage_bm25(query: str, bm25, chunks, n_results: int) -> list:
     """
     Stage 3: BM25 keyword retrieval using the ORIGINAL query.
@@ -157,7 +172,7 @@ def stage_rrf(dense_results: list, bm25_results: list, n_results: int) -> list:
     return reciprocal_rank_fusion([dense_results, bm25_results], n_results=n_results)
 
 
-@traceable(name="5. Cross-Encoder Reranking")
+@traceable(name="5. Cross-Encoder Reranking", process_inputs=_drop_inputs("reranker"))
 def stage_rerank(query: str, candidates: list, reranker, n_results: int) -> list:
     """
     Stage 5: Cross-encoder reranking of the RRF candidate pool.
@@ -205,7 +220,7 @@ def stage_generate(query: str, chunks: list) -> dict:
     return generate_answer(query, chunks)
 
 
-@traceable(name="RAG Pipeline")
+@traceable(name="RAG Pipeline", process_inputs=_drop_inputs("resources"))
 def run_pipeline(
     query: str,
     resources: dict,
