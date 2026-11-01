@@ -1,0 +1,262 @@
+{
+  "run_id": "20261031-114854_dev",
+  "aborted": null,
+  "config": {
+    "split": "dev",
+    "ids": null,
+    "limit": null,
+    "questions_file": "data/eval/questions_v2.json",
+    "question_set_version": "v2.2",
+    "git_commit": "f0170f9",
+    "hyde_model": "openai/gpt-oss-20b",
+    "generation_model": "openai/gpt-oss-20b",
+    "hyde_max_tokens": 1024,
+    "hyde_reasoning_effort": "low",
+    "generation_max_tokens": 2048,
+    "generation_reasoning_effort": "low",
+    "embed_model": "all-MiniLM-L6-v2",
+    "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "pool_size": 20,
+    "top_k_rerank": 5,
+    "top_k_generate": 5,
+    "page_context_chars": 2500
+  },
+  "overall": {
+    "questions": 24,
+    "errors": 0,
+    "behaviour_accuracy": 0.6667,
+    "answer_accuracy_answerable": 0.619,
+    "false_refusal_rate_answerable": 0.2381,
+    "correct_refusal_rate_should_decline": 1.0,
+    "retrieval": {
+      "hit@20": {
+        "dense": 0.6818,
+        "bm25": 0.6364,
+        "rrf": 0.8636
+      },
+      "hit@5": {
+        "dense": 0.5455,
+        "bm25": 0.5,
+        "rrf": 0.5909,
+        "rerank": 0.6364,
+        "final": 0.6818
+      },
+      "mrr@5": {
+        "dense": 0.3447,
+        "bm25": 0.3182,
+        "rrf": 0.3614,
+        "rerank": 0.4962
+      }
+    },
+    "lost_at": {
+      "fusion": 1,
+      "generation": 2,
+      "n/a": 2,
+      "not_retrieved": 2,
+      "ok": 12,
+      "ok_unlabelled_source": 1,
+      "rerank": 4
+    },
+    "citation_precision": 0.4688,
+    "latency_s": {
+      "p50": 12.188,
+      "p95": 16.389
+    },
+    "timings_p50_s": {
+      "hyde_s": 0.664,
+      "dense_s": 0.049,
+      "bm25_s": 0.013,
+      "rrf_s": 0.001,
+      "rerank_s": 0.592,
+      "dedup_s": 0.001,
+      "context_s": 0.004,
+      "generate_s": 10.805,
+      "hyde_llm_s": 0.659,
+      "generation_llm_s": 10.803,
+      "local_s": 0.677
+    },
+    "tokens_mean": 3712.375,
+    "context_chars_mean": 11047.25,
+    "hyde_cut_off": 0,
+    "generation_cut_off": 0,
+    "hyde_fallback": 0,
+    "fewer_than_5_chunks": 0,
+    "cost_usd_total": 0.0081
+  },
+  "by_group": {
+    "decline": {
+      "questions": 3,
+      "errors": 0,
+      "behaviour_accuracy": 1.0,
+      "answer_accuracy_answerable": null,
+      "false_refusal_rate_answerable": null,
+      "correct_refusal_rate_should_decline": 1.0,
+      "retrieval": {
+        "hit@20": {
+          "dense": 1.0,
+          "bm25": 1.0,
+          "rrf": 1.0
+        },
+        "hit@5": {
+          "dense": 1.0,
+          "bm25": 0.0,
+          "rrf": 1.0,
+          "rerank": 0.0,
+          "final": 0.0
+        },
+        "mrr@5": {
+          "dense": 1.0,
+          "bm25": 0.0,
+          "rrf": 0.5,
+          "rerank": 0.0
+        }
+      },
+      "lost_at": {
+        "n/a": 2,
+        "rerank": 1
+      },
+      "citation_precision": null,
+      "latency_s": {
+        "p50": 16.132,
+        "p95": 16.404
+      },
+      "timings_p50_s": {
+        "hyde_s": 0.665,
+        "dense_s": 0.051,
+        "bm25_s": 0.013,
+        "rrf_s": 0.001,
+        "rerank_s": 0.614,
+        "dedup_s": 0.001,
+        "context_s": 0.004,
+        "generate_s": 14.772,
+        "hyde_llm_s": 0.66,
+        "generation_llm_s": 14.768,
+        "local_s": 0.704
+      },
+      "tokens_mean": 4020.3333,
+      "context_chars_mean": 11643.6667,
+      "hyde_cut_off": 0,
+      "generation_cut_off": 0,
+      "hyde_fallback": 0,
+      "fewer_than_5_chunks": 0,
+      "cost_usd_total": 0.001045
+    },
+    "numeric": {
+      "questions": 16,
+      "errors": 0,
+      "behaviour_accuracy": 0.625,
+      "answer_accuracy_answerable": 0.625,
+      "false_refusal_rate_answerable": 0.25,
+      "correct_refusal_rate_should_decline": null,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.8125,
+          "bm25": 0.6875,
+          "rrf": 0.9375
+        },
+        "hit@5": {
+          "dense": 0.625,
+          "bm25": 0.5625,
+          "rrf": 0.625,
+          "rerank": 0.6875,
+          "final": 0.75
+        },
+        "mrr@5": {
+          "dense": 0.349,
+          "bm25": 0.3438,
+          "rrf": 0.3875,
+          "rerank": 0.5365
+        }
+      },
+      "lost_at": {
+        "fusion": 1,
+        "generation": 2,
+        "ok": 9,
+        "ok_unlabelled_source": 1,
+        "rerank": 3
+      },
+      "citation_precision": 0.375,
+      "latency_s": {
+        "p50": 12.188,
+        "p95": 14.15
+      },
+      "timings_p50_s": {
+        "hyde_s": 0.662,
+        "dense_s": 0.048,
+        "bm25_s": 0.013,
+        "rrf_s": 0.001,
+        "rerank_s": 0.6,
+        "dedup_s": 0.001,
+        "context_s": 0.003,
+        "generate_s": 10.805,
+        "hyde_llm_s": 0.656,
+        "generation_llm_s": 10.803,
+        "local_s": 0.684
+      },
+      "tokens_mean": 3761.75,
+      "context_chars_mean": 10902.0625,
+      "hyde_cut_off": 0,
+      "generation_cut_off": 0,
+      "hyde_fallback": 0,
+      "fewer_than_5_chunks": 0,
+      "cost_usd_total": 0.005501
+    },
+    "text": {
+      "questions": 5,
+      "errors": 0,
+      "behaviour_accuracy": 0.6,
+      "answer_accuracy_answerable": 0.6,
+      "false_refusal_rate_answerable": 0.2,
+      "correct_refusal_rate_should_decline": null,
+      "retrieval": {
+        "hit@20": {
+          "dense": 0.2,
+          "bm25": 0.4,
+          "rrf": 0.6
+        },
+        "hit@5": {
+          "dense": 0.2,
+          "bm25": 0.4,
+          "rrf": 0.4,
+          "rerank": 0.6,
+          "final": 0.6
+        },
+        "mrr@5": {
+          "dense": 0.2,
+          "bm25": 0.3,
+          "rrf": 0.25,
+          "rerank": 0.4667
+        }
+      },
+      "lost_at": {
+        "not_retrieved": 2,
+        "ok": 3
+      },
+      "citation_precision": 0.75,
+      "latency_s": {
+        "p50": 10.899,
+        "p95": 13.439
+      },
+      "timings_p50_s": {
+        "hyde_s": 0.664,
+        "dense_s": 0.046,
+        "bm25_s": 0.013,
+        "rrf_s": 0.001,
+        "rerank_s": 0.427,
+        "dedup_s": 0.001,
+        "context_s": 0.004,
+        "generate_s": 9.738,
+        "hyde_llm_s": 0.659,
+        "generation_llm_s": 9.736,
+        "local_s": 0.505
+      },
+      "tokens_mean": 3369.6,
+      "context_chars_mean": 11154.0,
+      "hyde_cut_off": 0,
+      "generation_cut_off": 0,
+      "hyde_fallback": 0,
+      "fewer_than_5_chunks": 0,
+      "cost_usd_total": 0.001555
+    }
+  }
+}
