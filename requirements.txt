@@ -6,6 +6,11 @@ sentence-transformers==3.4.1
 
 # Vector store
 chromadb==0.6.3
+# Indirect dependency of chromadb, pinned (DR-40): chromadb 0.6.3 calls
+# posthog.capture(user_id, event, properties), which posthog 6.0+ no longer
+# accepts, so every telemetry call failed with "capture() takes 1 positional
+# argument but 3 were given", even with anonymized_telemetry=False.
+posthog==5.4.0
 
 # Text splitting only (RecursiveCharacterTextSplitter in src/ingestion/chunker.py)
 langchain==0.3.25
