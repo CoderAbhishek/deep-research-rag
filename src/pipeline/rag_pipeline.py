@@ -35,6 +35,7 @@ import logging
 import time
 
 import chromadb
+from chromadb.config import Settings
 from langsmith import get_current_run_tree, traceable
 from sentence_transformers import SentenceTransformer
 
@@ -93,7 +94,10 @@ def load_resources():
     """
     t_start = time.perf_counter()
     logger.info("Loading ChromaDB from %s ...", CHROMA_PATH)
-    client     = chromadb.PersistentClient(path=CHROMA_PATH)
+    # Anonymous usage telemetry off (DR-40): chromadb 0.6.3's posthog call fails
+    # with "capture() takes 1 positional argument" and logs a false ERROR.
+    client     = chromadb.PersistentClient(path=CHROMA_PATH,
+                                           settings=Settings(anonymized_telemetry=False))
     collection = client.get_collection(name=COLLECTION)
 
     logger.info("Loading embedding model %s ...", EMBED_MODEL)

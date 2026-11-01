@@ -51,7 +51,8 @@ print("\n" + "=" * 60)
 print("Step 2: Building BM25 index")
 print("=" * 60)
 
-bm25, chunks = build_bm25_index(chunks)
+# build_bm25_index() takes the collection since Session 8 (DR-06); it returns the chunk list too.
+bm25, chunks = build_bm25_index(collection)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 3: Query — same question as Session 4 dense retrieval

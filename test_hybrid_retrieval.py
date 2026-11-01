@@ -53,7 +53,8 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 print("Embedding model loaded.")
 
 # BM25 index — built on the same text corpus
-bm25, chunks = build_bm25_index(chunks)
+# build_bm25_index() takes the collection since Session 8 (DR-06); it returns the chunk list too.
+bm25, chunks = build_bm25_index(collection)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 2: Dense retrieval (top-10)
@@ -124,12 +125,14 @@ for i in range(max_rows):
 
 print()
 print("Target: Page 80 (infosys-ar-26.pdf) = correct North America revenue answer")
-print("Dense MRR (Session 4):  0   (not in top 3)")
-print("BM25  MRR (Session 5):  0.33 (correct at rank 3)")
-# Compute actual hybrid MRR
-hybrid_mrr = 0.0
-for r in hybrid_results:
-    if r["metadata"]["page_number"] == 80 and "infosys-ar-26" in r["metadata"]["file_name"]:
-        hybrid_mrr = 1.0 / r["rank"]
-        break
-print(f"Hybrid MRR (Session 6): {hybrid_mrr:.2f} (correct at rank {int(1/hybrid_mrr) if hybrid_mrr else 'not found'})")
+# Every MRR below is computed in this run (DR-06: dense and BM25 used to be
+# printed as hard-coded numbers from Sessions 4 and 5).
+def _mrr(results):
+    for position, r in enumerate(results, start=1):
+        if r["metadata"]["page_number"] == 80 and "infosys-ar-26" in r["metadata"]["file_name"]:
+            return 1.0 / position, position
+    return 0.0, None
+
+for label, results in (("Dense", dense_results), ("BM25", bm25_results), ("Hybrid", hybrid_results)):
+    mrr, position = _mrr(results)
+    print(f"{label:<6} MRR: {mrr:.2f} ({'correct at rank ' + str(position) if position else 'page 80 not found'})")
