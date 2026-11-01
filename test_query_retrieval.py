@@ -50,7 +50,8 @@ raw_chunks = [
     {"text": doc, "metadata": meta}
     for doc, meta in zip(result["documents"], result["metadatas"])
 ]
-bm25, chunks = build_bm25_index(raw_chunks)
+# build_bm25_index() takes the collection since Session 8 (DR-06); it returns the chunk list too.
+bm25, chunks = build_bm25_index(collection)
 print(f"  BM25 index built over {len(chunks)} chunks.\n")
 
 

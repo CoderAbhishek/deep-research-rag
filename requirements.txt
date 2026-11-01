@@ -7,10 +7,8 @@ sentence-transformers==3.4.1
 # Vector store
 chromadb==0.6.3
 
-# LLM orchestration
+# Text splitting only (RecursiveCharacterTextSplitter in src/ingestion/chunker.py)
 langchain==0.3.25
-langchain-community==0.3.24
-langchain-groq==0.3.2
 
 # Groq API client
 groq==0.13.0
@@ -22,17 +20,11 @@ langsmith==0.3.45
 # Environment variable loading
 python-dotenv==1.0.1
 
-# UI (baseline and final)
-streamlit==1.43.2
-
 # Sparse retrieval 
 rank-bm25==0.2.2
 
-# Evaluation 
-ragas==0.2.14
-
 # API layer 
-fastapi==0.115.11
+# Pinned to the version every evaluation run used (.venv); 0.115.11 was never tested (DR-20).
+fastapi==0.141.1
 uvicorn==0.34.0
 pydantic==2.10.6
-# gradio==3.43.0

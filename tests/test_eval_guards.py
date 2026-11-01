@@ -24,7 +24,7 @@ def test_daily_limit_stops_the_run_minute_limit_does_not():
 
 def test_trace_inputs_drop_resources():
     # Import rag_pipeline with its heavy dependencies stubbed, then check the hook.
-    for name, attrs in {"chromadb": {}, "sentence_transformers": {"SentenceTransformer": object},
+    for name, attrs in {"chromadb": {}, "chromadb.config": {"Settings": dict}, "sentence_transformers": {"SentenceTransformer": object},
                         "langsmith": {"traceable": lambda *a, **k: (lambda f: f), "get_current_run_tree": lambda: None},
                         "src.retrieval.sparse": {"build_bm25_index": None, "search_bm25": None},
                         "src.retrieval.dense": {"search_dense": None},

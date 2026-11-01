@@ -1,6 +1,7 @@
 import logging
 from sentence_transformers import SentenceTransformer
 import chromadb
+from chromadb.config import Settings
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 import os
@@ -18,7 +19,8 @@ def get_embedding_model(model_name: str = "all-MiniLM-L6-v2") -> SentenceTransfo
 
 
 def get_chroma_client(persist_dir: str = "./chroma_db") -> chromadb.PersistentClient:
-    client = chromadb.PersistentClient(path=persist_dir)
+    # Telemetry off (DR-40), same as the query pipeline.
+    client = chromadb.PersistentClient(path=persist_dir, settings=Settings(anonymized_telemetry=False))
     return client
 
 
