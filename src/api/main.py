@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from src.observability.logging_config import new_request_id, setup_logging
 from src.observability.tracing import log_tracing_status
+from src.guardrails.input_checks import MAX_QUESTION_CHARS, InvalidQuestion
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
 
 load_dotenv()      # first, so LOG_LEVEL and the LangSmith variables are visible
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class QueryRequest(BaseModel):
     """Incoming request body for POST /query."""
-    question: str = Field(..., min_length=1, description="Research question to answer")
+    question: str = Field(..., min_length=1, max_length=MAX_QUESTION_CHARS, description="Research question to answer")
     verbose: bool = Field(False, description="If true, include the pipeline debug payload (stage counts, candidates and scores, timings, token usage)")
 
 
@@ -49,6 +50,7 @@ class QueryResponse(BaseModel):
     model: str
     request_id: str = Field(description="ID for this request; appears in every server log line and in the LangSmith trace metadata")
     trace_id: Optional[str] = Field(default=None, description="LangSmith trace ID (null when tracing is off)")
+    unsupported_figures: List[str] = Field(default_factory=list, description="Numbers in the answer that do not appear in the retrieved context (computed, converted or invented). Flagged, not blocked")
     debug: Optional[Dict[str, Any]] = Field(default=None, description="Pipeline debug payload, included only when verbose=true")
 
 
@@ -122,6 +124,9 @@ def query(request: QueryRequest, response: Response) -> QueryResponse:
                 "tags": ["api"],
             },
         )
+    except InvalidQuestion as exc:
+        logger.info("Rejected question: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("Pipeline failed")
         raise HTTPException(
@@ -138,5 +143,6 @@ def query(request: QueryRequest, response: Response) -> QueryResponse:
         model=result["model"],
         request_id=request_id,
         trace_id=result.get("trace_id"),
+        unsupported_figures=(result.get("guardrails") or {}).get("unsupported_figures", []),
         debug=result.get("debug") if request.verbose else None,
     )

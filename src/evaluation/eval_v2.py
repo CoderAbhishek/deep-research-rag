@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from src.evaluation import metrics_v2 as m
+from src.llm.rate_limits import is_daily_rate_limit  # no groq import: shared with groq_client
 from src.observability.logging_config import new_request_id, setup_logging
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ CSV_COLUMNS = [
     "latency_s", *TIMING_COLUMNS, "total_tokens", "cost_usd", "hyde_finish_reason", "generation_finish_reason",
     "hyde_chars", "hyde_completion_tokens", "hyde_reasoning_chars", "hyde_fallback",
     "generation_completion_tokens", "generation_reasoning_chars",
+    "llm_retries", "llm_retry_wait_s", "unsupported_figures",
     "error", "request_id", "trace_id",
     "review_pass", "review_note", "failure_category",
 ]
@@ -204,6 +206,10 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "hyde_completion_tokens": hyde_llm.get("completion_tokens"),
         "hyde_reasoning_chars": hyde_llm.get("reasoning_chars"),
         "hyde_fallback": debug.get("hyde_fallback"),
+        # Step 2 guardrails: retries (and waits) per question; figures not found in the context.
+        "llm_retries": sum((u or {}).get("retries") or 0 for u in debug["llm"].values()),
+        "llm_retry_wait_s": round(sum((u or {}).get("retry_wait_s") or 0 for u in debug["llm"].values()), 3),
+        "unsupported_figures": "; ".join((debug.get("guardrails") or {}).get("unsupported_figures", [])),
         "generation_completion_tokens": gen_llm.get("completion_tokens"),
         "generation_reasoning_chars": gen_llm.get("reasoning_chars"),
         # Full ranked page lists, so the run can be re-scored if labels change.
@@ -220,17 +226,6 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "trace_id": result.get("trace_id") or "",
     })
     return row
-
-
-def is_daily_rate_limit(exc: BaseException) -> bool:
-    """
-    True for a provider 429 on a per-DAY quota (Groq: "tokens per day (TPD)" or
-    "requests per day (RPD)"). Per-minute limits pass after a short wait; a daily
-    limit fails every remaining question, so the run must stop instead of
-    recording them as errors (run 20261030-174637_dev: 23 of 24 failed this way).
-    """
-    text = str(exc).lower()
-    return type(exc).__name__ == "RateLimitError" and ("per day" in text or "tpd" in text or "rpd" in text)
 
 
 def _local_s(total: Optional[float], *llm_calls: Optional[float]) -> Optional[float]:
@@ -285,6 +280,8 @@ def summarise(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "hyde_cut_off": sum(1 for r in ok if r.get("hyde_finish_reason") == "length"),
         "generation_cut_off": sum(1 for r in ok if r.get("generation_finish_reason") == "length"),
         "hyde_fallback": sum(1 for r in ok if r.get("hyde_fallback") is True),
+        "answers_with_unsupported_figures": sum(1 for r in ok if r.get("unsupported_figures")),
+        "llm_retries_total": sum(int(float(r.get("llm_retries") or 0)) for r in ok),
         "fewer_than_5_chunks": sum(1 for r in ok if (_chunks_sent(r) or 5) < 5),
         "cost_usd_total": round(sum(r["cost_usd"] for r in ok if r["cost_usd"] is not None), 6) if ok else None,
     }
