@@ -130,6 +130,8 @@ def _value(row: Dict[str, str], col: str) -> Optional[float]:
 def load_run(run_dir: str) -> Dict[str, Any]:
     path = Path(run_dir)
     summary = json.loads((path / "summary.json").read_text(encoding="utf-8"))
+    if summary.get("aborted"):
+        raise SystemExit(f"{path.name} is an aborted, incomplete run ({summary['aborted']}). Do not compare it.")
     with open(path / "results.csv", encoding="utf-8-sig") as f:
         rows = {r["id"]: r for r in csv.DictReader(f)}
     return {"name": path.name, "summary": summary, "rows": rows}

@@ -145,6 +145,7 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         logger.exception("Pipeline failed for %s", q["id"])
         row["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
         row["behaviour_ok"] = False
+        row["_daily_limit"] = is_daily_rate_limit(exc)
         return row
 
     answer = result["answer"]
@@ -219,6 +220,17 @@ def evaluate_question(q: Dict[str, Any], resources: Dict[str, Any], run_id: str,
         "trace_id": result.get("trace_id") or "",
     })
     return row
+
+
+def is_daily_rate_limit(exc: BaseException) -> bool:
+    """
+    True for a provider 429 on a per-DAY quota (Groq: "tokens per day (TPD)" or
+    "requests per day (RPD)"). Per-minute limits pass after a short wait; a daily
+    limit fails every remaining question, so the run must stop instead of
+    recording them as errors (run 20261030-174637_dev: 23 of 24 failed this way).
+    """
+    text = str(exc).lower()
+    return type(exc).__name__ == "RateLimitError" and ("per day" in text or "tpd" in text or "rpd" in text)
 
 
 def _local_s(total: Optional[float], *llm_calls: Optional[float]) -> Optional[float]:
@@ -361,8 +373,14 @@ def main(argv: Optional[List[str]] = None) -> Dict[str, Any]:
     resources = rp.load_resources()
 
     rows = []
+    aborted = None
     for i, q in enumerate(questions, start=1):
         row = evaluate_question(q, resources, run_id, version)
+        if row.pop("_daily_limit", False):
+            aborted = (f"daily rate limit reached at question {i} of {len(questions)} ({q['id']}); "
+                       f"{len(rows)} questions completed. Incomplete run: do not compare it.")
+            logger.error("RUN ABORTED: %s", aborted)
+            break
         rows.append(row)
         logger.info("[%d/%d] %s behaviour=%s answer=%s lost_at=%s rerank_hit5=%s cited=%s",
                     i, len(questions), q["id"], row["behaviour_ok"], row["answer_ok"],
@@ -371,8 +389,11 @@ def main(argv: Optional[List[str]] = None) -> Dict[str, Any]:
             time.sleep(args.sleep)
 
     groups = sorted({r["group"] for r in rows})
+    if aborted:
+        run_id += "_ABORTED"  # visible in the folder name, so it is not mistaken for a full run
     summary = {
         "run_id": run_id,
+        "aborted": aborted,
         "config": {
             "split": args.split, "ids": args.ids, "limit": args.limit, "questions_file": args.questions,
             "question_set_version": version,
