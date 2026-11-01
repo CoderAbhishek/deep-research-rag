@@ -15,6 +15,7 @@ from pydantic import BaseModel
 import uvicorn
 from src.observability.logging_config import new_request_id, setup_logging
 from src.observability.tracing import log_tracing_status
+from src.guardrails.input_checks import InvalidQuestion, validate_question
 from src.pipeline.rag_pipeline import load_resources, run_pipeline
 
 load_dotenv()      # first, so LOG_LEVEL and the LangSmith variables are visible
@@ -40,9 +41,10 @@ def query(req: QueryRequest, response: Response):
     # attached to the LangSmith trace, and returned to the browser.
     request_id = new_request_id()
     response.headers["X-Request-ID"] = request_id
-    question = (req.question or "").strip()
-    if not question:
-        raise HTTPException(status_code=422, detail="Please enter a question.")
+    try:
+        question = validate_question(req.question)
+    except InvalidQuestion as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     logger.info("Demo UI request: %d-char question", len(question))
     try:
         result = run_pipeline(
@@ -67,6 +69,7 @@ def query(req: QueryRequest, response: Response):
         "answer": result["answer"],
         "sources": result["sources"],
         "model": result.get("model", ""),
+        "unsupported_figures": (result.get("guardrails") or {}).get("unsupported_figures", []),
         "request_id": request_id,
     }
 
@@ -217,6 +220,8 @@ async function ask() {
     if (srcs.length > 0) {
       document.getElementById("sources-text").innerHTML = srcs.map(s => `<div class="source-item"><strong>[${s.source_num}]</strong> <code>${s.file_name}</code> — Page <strong>${s.page_number}</strong></div>`).join("");
     } else { document.getElementById("sources-text").textContent = "No sources cited."; }
+    const unsup = data.unsupported_figures || [];
+    if (unsup.length > 0) { document.getElementById("sources-text").insertAdjacentHTML("beforeend", `<div class="source-item" style="margin-top:10px;color:#e0b060;">Check: these figures were not found in the cited documents (they may be computed or converted): <code>${unsup.join(", ")}</code></div>`); }
     if (data.request_id) { document.getElementById("sources-text").insertAdjacentHTML("beforeend", `<div class="source-item" style="margin-top:10px;color:#4a4a68;">Request ID: <code>${data.request_id}</code></div>`); }
   } catch(err) {
     document.getElementById("answer-text").style.color = "#f08a8a";

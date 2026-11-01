@@ -98,6 +98,8 @@ SUMMARY_METRICS = [
     ("Generation cut off (count)", ("generation_cut_off",), False),
     ("HyDE fallback used (count)", ("hyde_fallback",), False),
     ("Questions with < 5 chunks to the model", ("fewer_than_5_chunks",), False),
+    ("Answers with unsupported figures", ("answers_with_unsupported_figures",), False),
+    ("LLM retries (count)", ("llm_retries_total",), False),
     ("Latency p50 (s)", ("latency_s", "p50"), False),
     ("Latency p95 (s)", ("latency_s", "p95"), False),
     ("Tokens per question", ("tokens_mean",), False),

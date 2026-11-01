@@ -10,6 +10,20 @@ Instrumenting the call once, here, gives every LLM call the same observability:
   - one log line with model, latency, tokens, finish_reason and estimated cost
   - a WARNING when the output is empty or was cut off (finish_reason != "stop")
   - an LLMResult the pipeline can return in its debug payload
+
+Timeouts and retries (DR-25, finish-plan step 2)
+------------------------------------------------
+The groq SDK retried failed calls itself (max_retries=2 by default) and logged
+the retries at INFO on the "groq" logger, which setup_logging() keeps at
+WARNING. Retries were invisible and their waits were counted as model
+latency (change F runs: 0.7 s calls became 10-12 s). Now:
+  - the SDK does not retry (max_retries=0) and each attempt has a timeout;
+  - chat() retries rate limits, timeouts, connection and 5xx errors itself,
+    at most GROQ_MAX_RETRIES times, waiting the provider's Retry-After (or
+    1 s, 2 s), and logs a WARNING for every retry;
+  - a daily quota, or an advised wait over MAX_RETRY_WAIT_S, fails at once;
+  - LLMResult.latency_s is the successful attempt only; retries and the time
+    spent waiting are recorded separately (retries, retry_wait_s).
 """
 
 import logging
@@ -21,7 +35,13 @@ from typing import Any, Dict, List, Optional
 from groq import Groq
 from langsmith import traceable
 
+from src.llm.rate_limits import is_retryable, retry_after_seconds
+
 logger = logging.getLogger(__name__)
+
+GROQ_TIMEOUT_S = 30.0     # per attempt; answer calls took ~0.4-0.9 s unthrottled
+GROQ_MAX_RETRIES = 2
+MAX_RETRY_WAIT_S = 20.0   # a longer advised wait (e.g. a daily quota) fails instead of hanging
 
 # Estimated price in USD per 1 million tokens.
 # Source: computeprices.com (third-party listing of Groq prices), checked
@@ -48,6 +68,8 @@ class LLMResult:
     reasoning_chars: int
     max_tokens: Optional[int] = None          # the ceiling this call ran with
     reasoning_effort: Optional[str] = None    # "low" / "medium" / "high", or None = model default
+    retries: int = 0                          # failed attempts before this one succeeded
+    retry_wait_s: float = 0.0                 # time spent waiting between attempts
 
     def stats(self) -> Dict[str, Any]:
         """Everything except the text (the text is returned separately)."""
@@ -75,7 +97,8 @@ def _get_client() -> Groq:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
             raise ValueError("GROQ_API_KEY not found. Add it to your .env file: GROQ_API_KEY=your_key_here")
-        _client = Groq(api_key=api_key)
+        # The SDK's own retries are switched off: chat() retries visibly instead.
+        _client = Groq(api_key=api_key, max_retries=0, timeout=GROQ_TIMEOUT_S)
     return _client
 
 
@@ -149,21 +172,34 @@ def chat(messages: List[Dict[str, str]], *, model: str, temperature: float,
              the pipeline's LLM calls apart.
     """
     start = time.perf_counter()
-    try:
-        out = _traced_chat(
-            messages, model, temperature, max_tokens, reasoning_effort,
-            # langsmith_extra is consumed by @traceable, not by _traced_chat.
-            # ls_provider / ls_model_name are LangSmith's standard metadata
-            # keys for identifying the model on an llm run.
-            langsmith_extra={
-                "name": f"groq.chat ({purpose})",
-                "metadata": {"ls_provider": "groq", "ls_model_name": model, "purpose": purpose,
-                             "max_tokens": max_tokens, "reasoning_effort": reasoning_effort},
-            },
-        )
-    except Exception:
-        logger.error("LLM %s call failed after %.2fs (model=%s)", purpose, time.perf_counter() - start, model)
-        raise
+    retries, waited = 0, 0.0
+    while True:
+        try:
+            out = _traced_chat(
+                messages, model, temperature, max_tokens, reasoning_effort,
+                # langsmith_extra is consumed by @traceable, not by _traced_chat.
+                # ls_provider / ls_model_name are LangSmith's standard metadata
+                # keys for identifying the model on an llm run.
+                langsmith_extra={
+                    "name": f"groq.chat ({purpose})",
+                    "metadata": {"ls_provider": "groq", "ls_model_name": model, "purpose": purpose,
+                                 "max_tokens": max_tokens, "reasoning_effort": reasoning_effort,
+                                 "attempt": retries + 1},
+                },
+            )
+            break
+        except Exception as exc:
+            advised = retry_after_seconds(exc)
+            wait = advised if advised is not None else float(2 ** retries)   # 1 s, then 2 s
+            if not is_retryable(exc) or retries >= GROQ_MAX_RETRIES or wait > MAX_RETRY_WAIT_S:
+                logger.error("LLM %s call failed after %.2fs and %d retries (model=%s): %s",
+                             purpose, time.perf_counter() - start, retries, model, type(exc).__name__)
+                raise
+            retries += 1
+            logger.warning("LLM %s: %s, retry %d/%d in %.1fs", purpose, type(exc).__name__,
+                           retries, GROQ_MAX_RETRIES, wait)
+            time.sleep(wait)
+            waited += wait
 
     usage = out["usage_metadata"] or {}
     result = LLMResult(
@@ -179,13 +215,16 @@ def chat(messages: List[Dict[str, str]], *, model: str, temperature: float,
         reasoning_chars=out["reasoning_chars"],
         max_tokens=max_tokens,
         reasoning_effort=reasoning_effort,
+        retries=retries,
+        retry_wait_s=round(waited, 3),
     )
 
     cost_text = f"{result.cost_usd:.6f}" if result.cost_usd is not None else "n/a"
     logger.info(
-        "LLM %s: model=%s effort=%s latency=%.2fs tokens(prompt=%s, completion=%s/%d) finish_reason=%s cost_usd=%s",
+        "LLM %s: model=%s effort=%s latency=%.2fs tokens(prompt=%s, completion=%s/%d) finish_reason=%s "
+        "cost_usd=%s retries=%d wait=%.1fs",
         purpose, model, reasoning_effort or "default", result.latency_s, result.prompt_tokens,
-        result.completion_tokens, max_tokens, result.finish_reason, cost_text,
+        result.completion_tokens, max_tokens, result.finish_reason, cost_text, retries, waited,
     )
     if result.finish_reason != "stop" or not result.text:
         logger.warning(

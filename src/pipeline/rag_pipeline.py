@@ -44,6 +44,8 @@ from src.retrieval.hybrid  import reciprocal_rank_fusion
 from src.retrieval.query   import generate_hyde_result
 from src.retrieval.reranker import load_reranker, rerank, deduplicate_by_page
 from src.generation.generator import generate_answer
+from src.guardrails.input_checks import validate_question
+from src.guardrails.output_checks import unsupported_figures
 
 logger = logging.getLogger(__name__)
 
@@ -269,10 +271,16 @@ def run_pipeline(
             'reranked_count'   — how many candidates went to the cross-encoder
             'final_chunk_count'— chunks after deduplication
             'trace_id'         - LangSmith trace ID (None when tracing is off)
+            'guardrails'       - {'unsupported_figures': [...]}: numbers in the answer
+                                 that appear nowhere in the context (flagged, not blocked)
             'debug'            - stage counts, candidates and scores (dense, BM25,
                                  RRF pool, reranked), per-stage timings, LLM usage
                                  and estimated cost
+    Raises:
+        InvalidQuestion: empty, over-long or symbol-only question (guardrail;
+                         checked before any LLM call, message safe to show).
     """
+    query = validate_question(query)
     t_pipeline = time.perf_counter()
     timings = {}
 
@@ -377,6 +385,12 @@ def run_pipeline(
                 len(generation_chunks), cited or "none", timings["generate_s"])
     if not cited:
         logger.warning("Answer cites no sources (a refusal, or the model omitted citations).")
+    # Output guardrail (DR-24, partial): every figure in the answer should be in the context.
+    unsupported = unsupported_figures(result["answer"], [c["text"] for c in generation_chunks])
+    if unsupported:
+        logger.warning("Answer contains figures not found in the context (computed, converted or "
+                       "invented): %s", unsupported)
+    result["guardrails"] = {"unsupported_figures": unsupported}
 
     timings["total_s"] = time.perf_counter() - t_pipeline
 
@@ -423,6 +437,7 @@ def run_pipeline(
         "llm": llm_usage,
         "total_tokens": total_tokens,
         "total_cost_usd": total_cost,
+        "guardrails": result["guardrails"],
     }
     return result
 
